@@ -163,6 +163,23 @@ assert(timRow && timRow[champIndex] === '3', `Tim championships column = 3 (got 
 assert(careerPointsIndex !== -1, '"Career Points (Reg)" column header exists');
 assert(timRow && timRow[regWIndex] === '79', `Tim Reg W column = 79 (got ${timRow?.[regWIndex]})`);
 
+// New personal-best/worst columns, cross-checked against the independent pandas run.
+const bestRecordIndex = await headerIndex('#career-table', 'Best Single-Season Record');
+const worstRecordIndex = await headerIndex('#career-table', 'Worst Single-Season Record');
+const bestSeasonIndex = await headerIndex('#career-table', 'Highest Scoring Season');
+const bestWeekIndex = await headerIndex('#career-table', 'Highest Single-Week Score');
+assert(timRow && timRow[bestRecordIndex] === '10-3-0 (2022)', `Tim best single-season record = 10-3-0 (2022) (got ${timRow?.[bestRecordIndex]})`);
+assert(timRow && timRow[worstRecordIndex] === '4-9-0 (2024)', `Tim worst single-season record = 4-9-0 (2024) (got ${timRow?.[worstRecordIndex]})`);
+assert(timRow && timRow[bestSeasonIndex] === '155.16 (2025)', `Tim highest scoring season = 155.16 (2025) (got ${timRow?.[bestSeasonIndex]})`);
+assert(timRow && timRow[bestWeekIndex] === '227.84 (2023)', `Tim highest single-week score = 227.84 (2023) (got ${timRow?.[bestWeekIndex]})`);
+
+// A manager with no recorded single-week score in any year should show "—", never "0.00" or blank.
+const carterRow = await page.$$eval('#career-table tbody tr', (rows) => {
+  const r = rows.find((tr) => tr.children[0].textContent === 'Carter');
+  return r ? [...r.children].map((td) => td.textContent) : null;
+});
+assert(carterRow && carterRow[bestWeekIndex] === '—', `Carter (no recorded weekly high) shows "—" for highest single-week score (got ${carterRow?.[bestWeekIndex]})`);
+
 // Sorting: click "Championships" header, confirm Tim (3) sorts to top in descending order.
 await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // ascending first
 await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // then descending

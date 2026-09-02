@@ -147,6 +147,30 @@ function renderCareerTable(careers) {
       key: 'avgMoves', label: 'Avg Moves/Season', numeric: true,
       get: (r) => r.avgMoves, format: (r) => num(r.avgMoves, 1),
     },
+    {
+      key: 'bestRecord', label: 'Best Single-Season Record', numeric: true,
+      get: (r) => r.bestRecord ? r.bestRecord.winPct : null,
+      format: (r) => r.bestRecord
+        ? `${num(r.bestRecord.regW)}-${num(r.bestRecord.regL)}-${num(r.bestRecord.regT)} (${r.bestRecord.year})`
+        : '—',
+    },
+    {
+      key: 'worstRecord', label: 'Worst Single-Season Record', numeric: true,
+      get: (r) => r.worstRecord ? r.worstRecord.winPct : null,
+      format: (r) => r.worstRecord
+        ? `${num(r.worstRecord.regW)}-${num(r.worstRecord.regL)}-${num(r.worstRecord.regT)} (${r.worstRecord.year})`
+        : '—',
+    },
+    {
+      key: 'bestPPGSeason', label: 'Highest Scoring Season', numeric: true,
+      get: (r) => r.bestPPGSeason ? r.bestPPGSeason.ppg : null,
+      format: (r) => r.bestPPGSeason ? `${num(r.bestPPGSeason.ppg, 2)} (${r.bestPPGSeason.year})` : '—',
+    },
+    {
+      key: 'bestSingleWeek', label: 'Highest Single-Week Score', numeric: true,
+      get: (r) => r.bestSingleWeek ? r.bestSingleWeek.value : null,
+      format: (r) => r.bestSingleWeek ? `${num(r.bestSingleWeek.value, 2)} (${r.bestSingleWeek.year})` : '—',
+    },
   ];
   renderSortableTable(table, careers, columns, 'manager', { key: 'regW', dir: -1 });
 }

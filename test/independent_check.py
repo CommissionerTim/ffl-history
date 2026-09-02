@@ -116,6 +116,62 @@ for _, row in careers.iterrows():
 
 print(f"\n{mismatches} mismatches found across {len(careers)} managers.\n")
 
+print("=== Personal single-season bests/worsts: pandas vs calc.js ===")
+personal_mismatches = 0
+for key, g in all_rows.groupby("ManagerKey"):
+    js = js_careers.get(key)
+    if js is None:
+        continue
+
+    # Best/worst single-season record by RegWinPct; ties broken by more (or
+    # fewer, for worst) regular-season wins, then earliest year.
+    best_row = g.sort_values(
+        ["RegWinPct", "Reg Season W", "Year"], ascending=[False, False, True]
+    ).iloc[0]
+    worst_row = g.sort_values(
+        ["RegWinPct", "Reg Season W", "Year"], ascending=[True, True, True]
+    ).iloc[0]
+
+    js_best = js["bestRecord"]
+    if js_best is None or best_row["Year"] != js_best["year"] or best_row["Reg Season W"] != js_best["regW"] or best_row["Reg Season L"] != js_best["regL"] or best_row["Reg Season T"] != js_best["regT"]:
+        print(f"MISMATCH {key}.bestRecord: pandas={best_row[['Year','Reg Season W','Reg Season L','Reg Season T']].to_dict()} js={js_best}")
+        personal_mismatches += 1
+
+    js_worst = js["worstRecord"]
+    if js_worst is None or worst_row["Year"] != js_worst["year"] or worst_row["Reg Season W"] != js_worst["regW"] or worst_row["Reg Season L"] != js_worst["regL"] or worst_row["Reg Season T"] != js_worst["regT"]:
+        print(f"MISMATCH {key}.worstRecord: pandas={worst_row[['Year','Reg Season W','Reg Season L','Reg Season T']].to_dict()} js={js_worst}")
+        personal_mismatches += 1
+
+    # Best single-season PPG; ties broken by earliest year.
+    g_ppg = g.dropna(subset=["PPG"]).sort_values(["PPG", "Year"], ascending=[False, True])
+    js_ppg = js["bestPPGSeason"]
+    if len(g_ppg):
+        r = g_ppg.iloc[0]
+        if js_ppg is None or r["Year"] != js_ppg["year"] or abs(r["PPG"] - js_ppg["ppg"]) > 1e-6:
+            print(f"MISMATCH {key}.bestPPGSeason: pandas={r[['Year','PPG']].to_dict()} js={js_ppg}")
+            personal_mismatches += 1
+    elif js_ppg is not None:
+        print(f"MISMATCH {key}.bestPPGSeason: pandas=None js={js_ppg}")
+        personal_mismatches += 1
+
+    # Best single-week score ever; ties broken by earliest year. Managers
+    # with no recorded single-week score in any of their years should end
+    # up null on both sides, not 0.
+    g_week = g.dropna(subset=["Highest Single Week Score"]).sort_values(
+        ["Highest Single Week Score", "Year"], ascending=[False, True]
+    )
+    js_week = js["bestSingleWeek"]
+    if len(g_week):
+        r = g_week.iloc[0]
+        if js_week is None or r["Year"] != js_week["year"] or abs(r["Highest Single Week Score"] - js_week["value"]) > 1e-6:
+            print(f"MISMATCH {key}.bestSingleWeek: pandas={r[['Year','Highest Single Week Score']].to_dict()} js={js_week}")
+            personal_mismatches += 1
+    elif js_week is not None:
+        print(f"MISMATCH {key}.bestSingleWeek: pandas=None js={js_week}")
+        personal_mismatches += 1
+
+print(f"\n{personal_mismatches} personal-best/worst mismatches found across {len(careers)} managers.\n")
+
 print("=== 2023 regular-season-first tie check ===")
 print(all_rows[all_rows["Year"] == 2023][["Manager", "Reg Season W", "Reg Season L", "RegWinPct", "IsRegSeasonFirst"]])
 

@@ -180,6 +180,17 @@ export function aggregateCareers(seasons) {
     let lastPlaceFinishes = 0, regSeasonFirsts = 0;
     let standingSum = 0, movesSum = 0;
 
+    // Personal single-season bests/worsts (career-table columns). Each is
+    // null only if the manager has no year with the underlying stat
+    // available (e.g. no year ever had a recorded Highest Single Week
+    // Score). Ties are broken deterministically: for best/worst record,
+    // by regular-season win count in the "more extreme" direction, then by
+    // earliest year; for PPG and single-week, by earliest year.
+    let bestRecord = null; // { year, regW, regL, regT, winPct }
+    let worstRecord = null;
+    let bestPPGSeason = null; // { year, ppg }
+    let bestSingleWeek = null; // { year, value }
+
     for (const r of rows) {
       regW += r.regW; regL += r.regL; regT += r.regT;
       playoffW += r.playoffW; playoffL += r.playoffL;
@@ -192,6 +203,45 @@ export function aggregateCareers(seasons) {
       if (regLeaderKeyByYear.get(r.year) === managerKey) regSeasonFirsts += 1;
       standingSum += r.finalStanding;
       movesSum += r.moves;
+
+      const winPct = regSeasonWinPct(r);
+      if (winPct !== null) {
+        if (
+          bestRecord === null ||
+          winPct > bestRecord.winPct + EPS ||
+          (Math.abs(winPct - bestRecord.winPct) < EPS &&
+            (r.regW > bestRecord.regW || (r.regW === bestRecord.regW && r.year < bestRecord.year)))
+        ) {
+          bestRecord = { year: r.year, regW: r.regW, regL: r.regL, regT: r.regT, winPct };
+        }
+        if (
+          worstRecord === null ||
+          winPct < worstRecord.winPct - EPS ||
+          (Math.abs(winPct - worstRecord.winPct) < EPS &&
+            (r.regW < worstRecord.regW || (r.regW === worstRecord.regW && r.year < worstRecord.year)))
+        ) {
+          worstRecord = { year: r.year, regW: r.regW, regL: r.regL, regT: r.regT, winPct };
+        }
+      }
+
+      const ppg = pointsPerGame(r);
+      if (
+        ppg !== null &&
+        (bestPPGSeason === null ||
+          ppg > bestPPGSeason.ppg + EPS ||
+          (Math.abs(ppg - bestPPGSeason.ppg) < EPS && r.year < bestPPGSeason.year))
+      ) {
+        bestPPGSeason = { year: r.year, ppg };
+      }
+
+      if (
+        r.highestWeek !== null &&
+        (bestSingleWeek === null ||
+          r.highestWeek > bestSingleWeek.value + EPS ||
+          (Math.abs(r.highestWeek - bestSingleWeek.value) < EPS && r.year < bestSingleWeek.year))
+      ) {
+        bestSingleWeek = { year: r.year, value: r.highestWeek };
+      }
     }
 
     const regDenom = regW + regL + regT;
@@ -212,6 +262,10 @@ export function aggregateCareers(seasons) {
       regSeasonFirsts,
       avgFinalStanding: standingSum / rows.length,
       avgMoves: movesSum / rows.length,
+      bestRecord,
+      worstRecord,
+      bestPPGSeason,
+      bestSingleWeek,
     });
   }
 

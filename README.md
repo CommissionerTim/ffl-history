@@ -7,6 +7,11 @@ JavaScript — nothing here is estimated or hand-typed.
 ## Pages
 
 - `index.html` — All-Time Records: career totals (sortable) + the record book.
+  The career table's last four columns are each manager's personal single-season
+  bests/worsts: Best/Worst Single-Season Record (by regular-season win%),
+  Highest Scoring Season (best single-season points/game), and Highest
+  Single-Week Score. A manager with no recorded weekly high in any season
+  shows "—" there, never "0.00".
 - `season.html` — Season Stats: pick a year, see that year's full standings (sortable).
 - `hall-of-fame.html` — one photo card per year's champion.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
