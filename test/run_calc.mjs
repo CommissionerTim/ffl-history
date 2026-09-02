@@ -61,10 +61,29 @@ for (const { year, rows } of seasons) {
 }
 
 // "Other Records" tab (freeform, hand-entered) — parsed independently of
-// the season data above, for its own cross-check.
+// the season data above, for its own cross-check. Parsed headerless (not
+// `header: true`) and mapped manually here, matching the real fix in
+// site/assets/data.js: the real sheet's CSV export pads every row with
+// many trailing blank quoted columns, a shape PapaParse's header mode
+// mishandles (spurious errors, and even silently dropped rows).
+function rowsFromRawCsv(rawRows) {
+  if (rawRows.length === 0) return [];
+  const headers = rawRows[0];
+  return rawRows.slice(1).map((cells) => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const key = (h ?? '').toString().trim();
+      if (!key) return;
+      obj[key] = cells[i] ?? '';
+    });
+    return obj;
+  });
+}
 const otherRecordsFixture = path.join(fixturesDir, 'Other Records.csv');
 const otherRecords = fs.existsSync(otherRecordsFixture)
-  ? normalizeOtherRecordsRows(Papa.parse(fs.readFileSync(otherRecordsFixture, 'utf8'), { header: true, skipEmptyLines: true }).data)
+  ? normalizeOtherRecordsRows(
+      rowsFromRawCsv(Papa.parse(fs.readFileSync(otherRecordsFixture, 'utf8'), { header: false, skipEmptyLines: true }).data)
+    )
   : [];
 
 const out = { seasonsLoaded: years, careers, recordBook, seasonStats, otherRecords };

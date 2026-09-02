@@ -60,14 +60,17 @@ Holder" (e.g. "Most drinks consumed at the draft" / "3" / "Tim"). It shows
 up as its own card on the All-Time Records page after the next page load,
 appended after the computed cards, in the exact same visual format — no
 site change needed. "Record Value" doesn't have to be a number ("Best trade
-nickname" / "The Sheep-for-a-Kicker Trade" / "Josh" works fine); "Record
-Holder" can be left blank if a record has no single holder. A row missing a
-name or value is skipped rather than shown as a broken card. Unlike
-everything else on this site, these values are never computed or
-cross-checked — they're exactly what's typed into the sheet. If the tab
-gets renamed or deleted, the page just quietly stops showing those cards
-(check the browser console for the fetch error) rather than breaking; to
-rename the tab, update `OTHER_RECORDS_TAB` in `config.js` to match.
+nickname" / "The Sheep-for-a-Kicker Trade" / "Josh" works fine). "Record
+Value" and "Record Holder" can each be left blank independently (a blank
+one just shows "—" on the card) — handy for a record whose real content
+belongs in the other column, e.g. "Farthest Draft from L.A." / *(blank)* /
+"Cabo San Lucas, Mexico (2025)". Only "Record Name" is required — a row
+missing it is skipped rather than shown as a broken card. Unlike everything
+else on this site, these values are never computed or cross-checked —
+they're exactly what's typed into the sheet. If the tab gets renamed or
+deleted, the page just quietly stops showing those cards (check the browser
+console for the fetch error) rather than breaking; to rename the tab,
+update `OTHER_RECORDS_TAB` in `config.js` to match.
 
 **Changing the password:** open `hash-password.html` in a browser (don't need
 to deploy it anywhere, just open the file), type the new password, copy the

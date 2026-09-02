@@ -444,8 +444,8 @@ if os.path.exists(other_records_path):
         label = str(row.get("Record Name", "")).strip()
         value = str(row.get("Record Value", "")).strip()
         holders = str(row.get("Record Holder", "")).strip()
-        if not label or not value:
-            continue  # rows missing a name or value are dropped, same as normalizeOtherRecordsRows
+        if not label:
+            continue  # rows missing a name are dropped, same as normalizeOtherRecordsRows
         expected.append({"label": label, "value": value, "holders": holders})
 
     js_other_records = js_out.get("otherRecords", [])

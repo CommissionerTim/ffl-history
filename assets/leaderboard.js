@@ -168,7 +168,7 @@ function appendRecordCards(grid, cards) {
     div.className = 'record-card';
     div.innerHTML = `
       <div class="label">${c.label}</div>
-      <div class="value">${c.value}</div>
+      <div class="value">${c.value || '—'}</div>
       <div class="holders">${c.holders || '—'}</div>
     `;
     grid.appendChild(div);

@@ -135,14 +135,22 @@ assert(
       'Best single-season Z-score',
       'Worst single-season Z-score',
       // "Other Records" tab (hand-entered, appended after the computed
-      // cards) — fixture has 4 rows, one missing a value and dropped.
-      'Most drinks consumed at the draft',
-      'Best trade nickname',
+      // cards) — fixture has 9 rows (7 real + 2 synthetic edge cases), all
+      // with a "Record Name", so all 9 render (only the name is required;
+      // a blank value or holder just renders as "—" on its own card).
+      'Most Times Slept Through Draft',
+      'Most Chat Rage-Quits, Single Season',
+      'Most Meals Ordered in Foreign Language at Draft',
+      'Farthest Draft from L.A.',
+      'Earliest Drafted Kicker',
+      'Most Defenses Drafted',
+      'Most Championships Secured due to Player Dying on Field',
+      'Missing Value Record',
       'Longest losing streak trash talk',
     ].join('|'),
   `record cards are in the requested order, computed then other-records (got: ${recordCards.map((c) => c.label).join(', ')})`
 );
-assert(recordCards.length === 21, `record book has 18 computed + 3 other-records cards = 21 (got ${recordCards.length})`);
+assert(recordCards.length === 27, `record book has 18 computed + 9 other-records cards = 27 (got ${recordCards.length})`);
 const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
 assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
 const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
@@ -190,15 +198,28 @@ assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst sin
 assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
 
 // "Other Records" tab: freeform, hand-entered cards rendered in the exact same card format.
-assert(cardByLabel('Most drinks consumed at the draft')?.value === '3', `other-record value passes through verbatim (got ${cardByLabel('Most drinks consumed at the draft')?.value})`);
-assert(cardByLabel('Most drinks consumed at the draft')?.holders === 'Tim', `other-record holder passes through verbatim (got ${cardByLabel('Most drinks consumed at the draft')?.holders})`);
-assert(cardByLabel('Best trade nickname')?.value === 'The Sheep-for-a-Kicker Trade', `other-record value can be non-numeric text (got ${cardByLabel('Best trade nickname')?.value})`);
+assert(cardByLabel('Most Times Slept Through Draft')?.value === '1', `other-record value passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.value})`);
+assert(cardByLabel('Most Times Slept Through Draft')?.holders === 'Kuba (2017)', `other-record holder passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.holders})`);
+assert(
+  cardByLabel('Most Championships Secured due to Player Dying on Field')?.value === '1' &&
+    cardByLabel('Most Championships Secured due to Player Dying on Field')?.holders === 'Tim (2022, Damar Hamlin)',
+  `other-record value can include punctuation/parentheses (got value=${cardByLabel('Most Championships Secured due to Player Dying on Field')?.value} holders=${cardByLabel('Most Championships Secured due to Player Dying on Field')?.holders})`
+);
 assert(
   cardByLabel('Longest losing streak trash talk')?.value === '17 days' && cardByLabel('Longest losing streak trash talk')?.holders === 'Ethan',
   `other-record row with extra whitespace is trimmed on every column (got value=${cardByLabel('Longest losing streak trash talk')?.value} holders=${cardByLabel('Longest losing streak trash talk')?.holders})`
 );
-assert(cardByLabel('Missing Value Record') === undefined, 'other-record row missing a value is dropped, not rendered as a broken card');
-const otherRecordCardEls = await page.$$eval('.record-card', (cards) => cards.filter((c) => c.querySelector('.label').textContent === 'Most drinks consumed at the draft'));
+// Rows with a blank "Record Value" (real content lives in Holder instead)
+// still render -- only "Record Name" is required -- with "—" for the blank field.
+assert(
+  cardByLabel('Farthest Draft from L.A.')?.value === '—' && cardByLabel('Farthest Draft from L.A.')?.holders === 'Cabo San Lucas, Mexico (2025)',
+  `other-record row with a blank value renders '—' and keeps its holder text (got value=${cardByLabel('Farthest Draft from L.A.')?.value} holders=${cardByLabel('Farthest Draft from L.A.')?.holders})`
+);
+assert(
+  cardByLabel('Missing Value Record')?.value === '—' && cardByLabel('Missing Value Record')?.holders === 'Nobody',
+  `other-record row with a blank value still renders as a card, not dropped (got value=${cardByLabel('Missing Value Record')?.value} holders=${cardByLabel('Missing Value Record')?.holders})`
+);
+const otherRecordCardEls = await page.$$eval('.record-card', (cards) => cards.filter((c) => c.querySelector('.label').textContent === 'Most Times Slept Through Draft'));
 assert(otherRecordCardEls.length === 1, 'other-record card uses the same .record-card markup as computed cards');
 
 // Column header lookup helper (index-agnostic — survives future column reordering).

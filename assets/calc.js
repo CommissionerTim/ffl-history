@@ -82,10 +82,12 @@ export function normalizeYearRows(parsedRows, year) {
  * "Record Name", "Record Value", "Record Holder". Unlike every other stat
  * in this file, these values are NOT computed — they're typed directly
  * into the sheet, verbatim. This only trims whitespace and drops rows
- * missing a name or value (blank rows, stray instructional rows, etc.); it
- * never computes, estimates, or reorders anything. The "Record Holder"
- * column is optional — a row with no holder just renders with a "—" there,
- * same as every other holderless stat on the site.
+ * missing a name (blank rows, stray instructional rows, etc.); it never
+ * computes, estimates, or reorders anything. Both "Record Value" and
+ * "Record Holder" are optional and independently render as "—" when blank
+ * (e.g. a record whose real content lives in the Holder column instead,
+ * like "Farthest Draft from L.A." / "" / "Cabo San Lucas, Mexico") — only
+ * "Record Name" is required for a row to appear as a card.
  * @returns {Array<{label:string, value:string, holders:string}>}
  */
 export function normalizeOtherRecordsRows(parsedRows) {
@@ -94,7 +96,7 @@ export function normalizeOtherRecordsRows(parsedRows) {
       const label = (raw['Record Name'] ?? '').toString().trim();
       const value = (raw['Record Value'] ?? '').toString().trim();
       const holders = (raw['Record Holder'] ?? '').toString().trim();
-      if (!label || !value) return null;
+      if (!label) return null;
       return { label, value, holders };
     })
     .filter((r) => r !== null);

@@ -26,6 +26,33 @@ async function fetchYearCsv(sheetId, year) {
 }
 
 /**
+ * Convert a headerless Papa.parse result (array of arrays, `header: false`)
+ * into header-keyed row objects, using the first row as column names. This
+ * exists to sidestep a real PapaParse quirk: Google Sheets' CSV export pads
+ * every row out to the tab's full column width with trailing blank quoted
+ * cells (e.g. 3 named columns + 23 blank ones), and PapaParse's own
+ * `header: true` mode can misparse that shape — emitting spurious
+ * InvalidQuotes/TooFewFields errors and, worse, silently dropping data rows
+ * from its output. Parsing headerless and mapping manually here is
+ * unaffected by that quirk. Columns whose header cell is blank (i.e. the
+ * padding columns themselves) are dropped; every other column is kept,
+ * including rows with a blank cell value.
+ */
+function rowsFromRawCsv(rawRows) {
+  if (rawRows.length === 0) return [];
+  const headers = rawRows[0];
+  return rawRows.slice(1).map((cells) => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const key = (h ?? '').toString().trim();
+      if (!key) return;
+      obj[key] = cells[i] ?? '';
+    });
+    return obj;
+  });
+}
+
+/**
  * Fetch + parse every year in `years`. Returns { seasons, errors } —
  * errors is never silently swallowed, so a bad/renamed tab surfaces as a
  * visible warning on the page instead of quietly dropping a season's data.
@@ -67,11 +94,14 @@ export async function loadAllSeasons(sheetId, years) {
 export async function loadOtherRecords(sheetId, tabName) {
   try {
     const csvText = await fetchSheetTabCsv(sheetId, tabName);
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+    // Parsed headerless (see rowsFromRawCsv above) rather than with
+    // `header: true` -- this tab's real CSV export is padded with many
+    // trailing blank columns, a shape PapaParse's header mode mishandles.
+    const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
     if (parsed.errors && parsed.errors.length) {
       throw new Error(`CSV parse error in "${tabName}" tab: ${parsed.errors[0].message}`);
     }
-    return { records: normalizeOtherRecordsRows(parsed.data), error: null };
+    return { records: normalizeOtherRecordsRows(rowsFromRawCsv(parsed.data)), error: null };
   } catch (err) {
     return { records: [], error: err?.message ?? String(err) };
   }
