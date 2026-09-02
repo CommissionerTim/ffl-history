@@ -76,6 +76,30 @@ export function normalizeYearRows(parsedRows, year) {
     .filter((r) => r !== null);
 }
 
+/**
+ * Parse the freeform "Other Records" tab: hand-entered anecdotal records
+ * (e.g. "Most drinks consumed at the draft — 3 — Tim") with columns
+ * "Record Name", "Record Value", "Record Holder". Unlike every other stat
+ * in this file, these values are NOT computed — they're typed directly
+ * into the sheet, verbatim. This only trims whitespace and drops rows
+ * missing a name or value (blank rows, stray instructional rows, etc.); it
+ * never computes, estimates, or reorders anything. The "Record Holder"
+ * column is optional — a row with no holder just renders with a "—" there,
+ * same as every other holderless stat on the site.
+ * @returns {Array<{label:string, value:string, holders:string}>}
+ */
+export function normalizeOtherRecordsRows(parsedRows) {
+  return parsedRows
+    .map((raw) => {
+      const label = (raw['Record Name'] ?? '').toString().trim();
+      const value = (raw['Record Value'] ?? '').toString().trim();
+      const holders = (raw['Record Holder'] ?? '').toString().trim();
+      if (!label || !value) return null;
+      return { label, value, holders };
+    })
+    .filter((r) => r !== null);
+}
+
 // ---------------------------------------------------------------------
 // Per-row / per-season derived values
 // ---------------------------------------------------------------------

@@ -2,16 +2,21 @@
 
 A static site that reads the league's Google Sheet directly (as CSV, at page-load
 time) and computes all-time standings and records with plain, deterministic
-JavaScript — nothing here is estimated or hand-typed.
+JavaScript. The one deliberate exception is the "Other Records" tab (see
+below) — freeform, hand-typed anecdotal records — everything else is
+computed, never estimated or hand-typed.
 
 ## Pages
 
-- `index.html` — All-Time Records: the record book only (18 cards, one
-  extreme/leader stat per card, ties shown as multiple holders). See
-  "Advanced stats" below for how the Z-score/luck/playoff-driven cards
-  are computed.
+- `index.html` — All-Time Records: the record book (18 computed cards, one
+  extreme/leader stat per card, ties shown as multiple holders — see
+  "Advanced stats" below for how the Z-score/luck/playoff-driven ones are
+  computed), plus any freeform cards from the sheet's "Other Records" tab
+  appended after them in the same format (see "Day-to-day maintenance").
 - `career-stats.html` — Career Stats: the full sortable career-totals table.
-  Columns include each manager's personal single-season bests/worsts:
+  The Manager column is frozen (sticky) so it stays in view while scrolling
+  horizontally through the table's many columns. Columns include each
+  manager's personal single-season bests/worsts:
   Best/Worst Single-Season Record (by regular-season win%), Highest Scoring
   Season (best single-season points/game), Highest Single-Week Score,
   Highest Points-Against/Game, Highest/Lowest Single-Season Z-Score,
@@ -48,6 +53,21 @@ instead of a broken image.
 **Editing the league rules:** just edit the Google Doc — the page re-fetches
 it live on every load, no site change needed. To point it at a different
 doc, change `RULES_DOC_ID` in `config.js`.
+
+**Adding an "Other Record" (anecdotal, hand-typed):** on the sheet's "Other
+Records" tab, add a row with "Record Name", "Record Value", and "Record
+Holder" (e.g. "Most drinks consumed at the draft" / "3" / "Tim"). It shows
+up as its own card on the All-Time Records page after the next page load,
+appended after the computed cards, in the exact same visual format — no
+site change needed. "Record Value" doesn't have to be a number ("Best trade
+nickname" / "The Sheep-for-a-Kicker Trade" / "Josh" works fine); "Record
+Holder" can be left blank if a record has no single holder. A row missing a
+name or value is skipped rather than shown as a broken card. Unlike
+everything else on this site, these values are never computed or
+cross-checked — they're exactly what's typed into the sheet. If the tab
+gets renamed or deleted, the page just quietly stops showing those cards
+(check the browser console for the fetch error) rather than breaking; to
+rename the tab, update `OTHER_RECORDS_TAB` in `config.js` to match.
 
 **Changing the password:** open `hash-password.html` in a browser (don't need
 to deploy it anywhere, just open the file), type the new password, copy the

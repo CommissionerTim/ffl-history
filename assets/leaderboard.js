@@ -1,6 +1,6 @@
-import { SHEET_ID, YEARS, PASSWORD_HASH, SITE_TITLE } from '../config.js';
+import { SHEET_ID, YEARS, OTHER_RECORDS_TAB, PASSWORD_HASH, SITE_TITLE } from '../config.js';
 import { requireAuth } from './auth.js';
-import { loadAllSeasons } from './data.js';
+import { loadAllSeasons, loadOtherRecords } from './data.js';
 import { buildLeaderboard } from './calc.js';
 
 document.title = SITE_TITLE + ' — All-Time Records';
@@ -24,7 +24,10 @@ async function main() {
   status.className = 'status-banner loading';
   status.hidden = false;
 
-  const { seasons, errors } = await loadAllSeasons(SHEET_ID, YEARS);
+  const [{ seasons, errors }, otherRecords] = await Promise.all([
+    loadAllSeasons(SHEET_ID, YEARS),
+    loadOtherRecords(SHEET_ID, OTHER_RECORDS_TAB),
+  ]);
 
   if (errors.length) {
     status.className = 'status-banner error';
@@ -35,18 +38,28 @@ async function main() {
     status.hidden = true;
   }
 
+  // The "Other Records" tab is optional and hand-maintained (see config.js) —
+  // if it doesn't exist yet, or a fetch hiccup happens, that's not worth a
+  // scary banner on top of the real computed stats. Just skip the extra
+  // cards and leave a trail in the console for debugging.
+  if (otherRecords.error) {
+    console.error('Other Records tab:', otherRecords.error);
+  }
+
+  const grid = document.getElementById('record-grid');
+  grid.innerHTML = '';
   const { recordBook } = buildLeaderboard(seasons);
-  renderRecordBook(recordBook);
+  appendRecordCards(grid, computedRecordCards(recordBook));
+  appendRecordCards(grid, otherRecordCards(otherRecords.records));
 }
 
-function renderRecordBook(rb) {
-  const grid = document.getElementById('record-grid');
+function computedRecordCards(rb) {
   const holdersText = (holders, withYear) =>
     holders
       .map((h) => (withYear ? `${h.manager} (${h.year})` : h.manager))
       .join(', ');
 
-  const cards = [
+  return [
     {
       label: 'Most championships',
       value: rb.mostChampionships.value ?? '—',
@@ -138,8 +151,18 @@ function renderRecordBook(rb) {
       holders: holdersText(rb.worstZScore.holders, true),
     },
   ];
+}
 
-  grid.innerHTML = '';
+// Freeform, hand-entered records from the sheet's "Other Records" tab (e.g.
+// "Most drinks consumed at the draft — 3 — Tim"). These aren't computed —
+// they're typed directly into the sheet — so this just maps each row's
+// three columns onto the same {label, value, holders} card shape the
+// computed record-book cards use, rendered identically below.
+function otherRecordCards(records) {
+  return records.map((r) => ({ label: r.label, value: r.value, holders: r.holders }));
+}
+
+function appendRecordCards(grid, cards) {
   for (const c of cards) {
     const div = document.createElement('div');
     div.className = 'record-card';

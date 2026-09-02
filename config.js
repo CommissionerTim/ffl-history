@@ -8,6 +8,15 @@ export const YEARS = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024
 
 export const SITE_TITLE = 'League Record Book';
 
+// Sheet tab name for freeform, hand-entered "other records" (e.g. "Most
+// drinks consumed at the draft"). Columns: "Record Name", "Record Value",
+// "Record Holder". Each row becomes its own card on the All-Time Records
+// page, appended after the computed record-book cards, in the exact same
+// format. Add or remove rows on the sheet any time — no site change
+// needed. If this tab doesn't exist yet (or gets renamed), those extra
+// cards are just silently skipped rather than breaking the page.
+export const OTHER_RECORDS_TAB = 'Other Records';
+
 // Google Doc ID for the League Rules page (embedded live — edits to the doc
 // show up on next page load, no site change needed). Doc must be shared as
 // "Anyone with the link" can view.

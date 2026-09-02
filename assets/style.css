@@ -212,9 +212,29 @@ th {
   position: sticky;
   top: 0;
   background: var(--panel);
+  z-index: 2;
 }
 
 th.sorted { color: var(--ink); }
+
+/* Freeze the leftmost (Manager) column on the career-stats table so it
+   stays in view while scrolling horizontally through its many columns. */
+#career-table th:first-child,
+#career-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+  box-shadow: 1px 0 0 var(--border);
+}
+
+#career-table th:first-child {
+  z-index: 3; /* stays above both the sticky header row and the frozen column while scrolling in either direction */
+}
+
+#career-table tbody tr:hover td:first-child {
+  background: #f2f6f3; /* match the row-hover background so the frozen cell doesn't look out of place */
+}
 
 .th-info {
   display: inline-block;

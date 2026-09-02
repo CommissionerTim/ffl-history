@@ -134,10 +134,15 @@ assert(
       'Unluckiest season ever',
       'Best single-season Z-score',
       'Worst single-season Z-score',
+      // "Other Records" tab (hand-entered, appended after the computed
+      // cards) — fixture has 4 rows, one missing a value and dropped.
+      'Most drinks consumed at the draft',
+      'Best trade nickname',
+      'Longest losing streak trash talk',
     ].join('|'),
-  `record cards are in the requested order (got: ${recordCards.map((c) => c.label).join(', ')})`
+  `record cards are in the requested order, computed then other-records (got: ${recordCards.map((c) => c.label).join(', ')})`
 );
-assert(recordCards.length === 18, `record book has 18 cards (got ${recordCards.length})`);
+assert(recordCards.length === 21, `record book has 18 computed + 3 other-records cards = 21 (got ${recordCards.length})`);
 const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
 assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
 const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
@@ -183,6 +188,18 @@ assert(cardByLabel('Best single-season Z-score')?.value === '+2.02', `best singl
 assert(cardByLabel('Best single-season Z-score')?.holders.includes('Tim (2025)'), 'best single-season z-score holder = Tim (2025)');
 assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst single-season z-score = -2.00 (got ${cardByLabel('Worst single-season Z-score')?.value})`);
 assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
+
+// "Other Records" tab: freeform, hand-entered cards rendered in the exact same card format.
+assert(cardByLabel('Most drinks consumed at the draft')?.value === '3', `other-record value passes through verbatim (got ${cardByLabel('Most drinks consumed at the draft')?.value})`);
+assert(cardByLabel('Most drinks consumed at the draft')?.holders === 'Tim', `other-record holder passes through verbatim (got ${cardByLabel('Most drinks consumed at the draft')?.holders})`);
+assert(cardByLabel('Best trade nickname')?.value === 'The Sheep-for-a-Kicker Trade', `other-record value can be non-numeric text (got ${cardByLabel('Best trade nickname')?.value})`);
+assert(
+  cardByLabel('Longest losing streak trash talk')?.value === '17 days' && cardByLabel('Longest losing streak trash talk')?.holders === 'Ethan',
+  `other-record row with extra whitespace is trimmed on every column (got value=${cardByLabel('Longest losing streak trash talk')?.value} holders=${cardByLabel('Longest losing streak trash talk')?.holders})`
+);
+assert(cardByLabel('Missing Value Record') === undefined, 'other-record row missing a value is dropped, not rendered as a broken card');
+const otherRecordCardEls = await page.$$eval('.record-card', (cards) => cards.filter((c) => c.querySelector('.label').textContent === 'Most drinks consumed at the draft'));
+assert(otherRecordCardEls.length === 1, 'other-record card uses the same .record-card markup as computed cards');
 
 // Column header lookup helper (index-agnostic — survives future column reordering).
 async function headerIndex(tableSelector, matchText, excludeText) {
@@ -292,6 +309,39 @@ await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // asce
 await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // then descending
 const topManagerAfterSort = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
 assert(topManagerAfterSort === 'Tim', `sorting by Championships desc puts Tim first (got ${topManagerAfterSort})`);
+
+// Frozen Manager column: stays pinned in place while the table scrolls horizontally.
+const stickyStyles = await page.evaluate(() => {
+  const th = document.querySelector('#career-table thead th:first-child');
+  const td = document.querySelector('#career-table tbody tr:first-child td:first-child');
+  return {
+    thPosition: getComputedStyle(th).position,
+    thLeft: getComputedStyle(th).left,
+    tdPosition: getComputedStyle(td).position,
+    tdLeft: getComputedStyle(td).left,
+  };
+});
+assert(
+  stickyStyles.thPosition === 'sticky' && stickyStyles.thLeft === '0px',
+  `career table's Manager header is a frozen (sticky, left: 0) column (got ${JSON.stringify(stickyStyles)})`
+);
+assert(
+  stickyStyles.tdPosition === 'sticky' && stickyStyles.tdLeft === '0px',
+  `career table's Manager cells are a frozen (sticky, left: 0) column (got ${JSON.stringify(stickyStyles)})`
+);
+const boundingLeftBeforeScroll = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.getBoundingClientRect().left);
+await page.$eval('.table-wrap', (el) => { el.scrollLeft = 600; });
+await page.waitForTimeout(50);
+const scrolledLeft = await page.$eval('.table-wrap', (el) => el.scrollLeft);
+assert(scrolledLeft > 0, `table-wrap actually scrolled horizontally (scrollLeft=${scrolledLeft})`);
+const boundingLeftAfterScroll = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.getBoundingClientRect().left);
+assert(
+  boundingLeftAfterScroll === boundingLeftBeforeScroll,
+  `Manager column stays visually in place after scrolling right (before=${boundingLeftBeforeScroll}, after=${boundingLeftAfterScroll})`
+);
+const scrolledManagerName = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
+assert(scrolledManagerName === 'Tim', `frozen column still shows the right manager name after scrolling (got ${scrolledManagerName})`);
+await page.$eval('.table-wrap', (el) => { el.scrollLeft = 0; }); // reset for any later assertions
 
 // ---- season.html: gate should already be unlocked (same session) ----
 await page.goto(`${baseUrl}/season.html`);

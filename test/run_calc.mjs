@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import Papa from 'papaparse';
 import {
   normalizeYearRows,
+  normalizeOtherRecordsRows,
   buildLeaderboard,
   pythagoreanWinPct,
   pointsScoredZScoresForYear,
@@ -20,10 +21,13 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'fixtures');
 
+// Only year-tab fixtures (numeric filenames) go into season aggregation;
+// "Other Records.csv" is the freeform tab, parsed separately below.
 const years = fs
   .readdirSync(fixturesDir)
   .filter((f) => f.endsWith('.csv'))
   .map((f) => path.basename(f, '.csv'))
+  .filter((stem) => /^\d+$/.test(stem))
   .sort();
 
 const seasons = years.map((year) => {
@@ -56,6 +60,13 @@ for (const { year, rows } of seasons) {
   }
 }
 
-const out = { seasonsLoaded: years, careers, recordBook, seasonStats };
+// "Other Records" tab (freeform, hand-entered) — parsed independently of
+// the season data above, for its own cross-check.
+const otherRecordsFixture = path.join(fixturesDir, 'Other Records.csv');
+const otherRecords = fs.existsSync(otherRecordsFixture)
+  ? normalizeOtherRecordsRows(Papa.parse(fs.readFileSync(otherRecordsFixture, 'utf8'), { header: true, skipEmptyLines: true }).data)
+  : [];
+
+const out = { seasonsLoaded: years, careers, recordBook, seasonStats, otherRecords };
 fs.writeFileSync(path.join(__dirname, 'calc_output.json'), JSON.stringify(out, null, 2));
 console.log(JSON.stringify(out, null, 2));

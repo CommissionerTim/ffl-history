@@ -14,7 +14,10 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
 frames = []
 for path in sorted(glob.glob(os.path.join(FIXTURES, "*.csv"))):
-    year = int(os.path.basename(path).replace(".csv", ""))
+    stem = os.path.basename(path).replace(".csv", "")
+    if not stem.isdigit():
+        continue  # skip non-year fixtures, e.g. "Other Records.csv" (freeform, checked separately below)
+    year = int(stem)
     df = pd.read_csv(path)
     df["Year"] = year
     frames.append(df)
@@ -429,3 +432,27 @@ check_scalar("worstZScore", _v, js_out["recordBook"]["worstZScore"])
 check_holders("worstZScore", _h, js_out["recordBook"]["worstZScore"])
 
 print(f"\n{rb_mismatches} record-book mismatches found.\n")
+
+print("=== Other Records tab: pandas vs calc.js ===")
+print("(freeform/hand-entered -- this checks the trim + skip-invalid-row parsing logic, not any computed math)")
+other_records_mismatches = 0
+other_records_path = os.path.join(FIXTURES, "Other Records.csv")
+if os.path.exists(other_records_path):
+    raw = pd.read_csv(other_records_path, dtype=str, keep_default_na=False)
+    expected = []
+    for _, row in raw.iterrows():
+        label = str(row.get("Record Name", "")).strip()
+        value = str(row.get("Record Value", "")).strip()
+        holders = str(row.get("Record Holder", "")).strip()
+        if not label or not value:
+            continue  # rows missing a name or value are dropped, same as normalizeOtherRecordsRows
+        expected.append({"label": label, "value": value, "holders": holders})
+
+    js_other_records = js_out.get("otherRecords", [])
+    if expected != js_other_records:
+        print(f"MISMATCH otherRecords: pandas={expected} js={js_other_records}")
+        other_records_mismatches += 1
+else:
+    print("(no Other Records.csv fixture found -- skipped)")
+
+print(f"\n{other_records_mismatches} Other Records mismatches found.\n")
