@@ -322,8 +322,9 @@ const zScoreIdx = await headerIndex('#season-table', 'Z-Score');
 const pythagIdx = await headerIndex('#season-table', 'Pythagorean Win%');
 const overUnderIdx = await headerIndex('#season-table', 'Win% +/- Pythagorean');
 assert(timRow2025 && timRow2025[zScoreIdx] === '+2.02', `Tim 2025 Z-score = +2.02 (got ${timRow2025?.[zScoreIdx]})`);
-assert(timRow2025 && timRow2025[pythagIdx] === '56.9%', `Tim 2025 Pythagorean win% = 56.9% (got ${timRow2025?.[pythagIdx]})`);
-assert(timRow2025 && timRow2025[overUnderIdx] === '+20.0%', `Tim 2025 win% over/under Pythagorean = +20.0% (got ${timRow2025?.[overUnderIdx]})`);
+// Pythagorean exponent is fit to this league's own history (6.1), not the NFL's 2.37 — see fit_pythagorean_exponent.py.
+assert(timRow2025 && timRow2025[pythagIdx] === '67.1%', `Tim 2025 Pythagorean win% = 67.1% (got ${timRow2025?.[pythagIdx]})`);
+assert(timRow2025 && timRow2025[overUnderIdx] === '+9.8%', `Tim 2025 win% over/under Pythagorean = +9.8% (got ${timRow2025?.[overUnderIdx]})`);
 
 // Hover-tooltip icons exist with real plain-language explainer text.
 const seasonTooltips = await page.$$eval('#season-table thead .th-info', (els) => els.map((el) => el.title));

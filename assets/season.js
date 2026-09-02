@@ -112,7 +112,7 @@ function renderYear(year) {
     {
       key: 'pythagWinPct', label: 'Pythagorean Win%', numeric: true,
       get: (r) => r.pythagWinPct, format: (r) => pct(r.pythagWinPct),
-      tooltip: "The win percentage this record \"should\" be based only on points scored vs. points allowed (PF^2.37 / (PF^2.37 + PA^2.37)) — not the actual wins and losses. A common way to see how much of a record reflects scoring strength vs. matchup luck.",
+      tooltip: "The win percentage this record \"should\" be based only on points scored vs. points allowed (PF^6.1 / (PF^6.1 + PA^6.1)) — not the actual wins and losses. The 6.1 exponent is fit to this league's own scoring history (see the site README), not borrowed from the NFL. A way to see how much of a record reflects scoring strength vs. matchup luck.",
     },
     {
       key: 'winPctOverUnder', label: 'Win% +/- Pythagorean', numeric: true,

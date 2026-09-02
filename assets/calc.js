@@ -104,10 +104,20 @@ export function pointsAgainstPerGame(row) {
   return row.pointsAgainst / denom;
 }
 
-// Exponent used for Pythagorean win expectation. 2.37 is the commonly-used
-// football-tuned value (vs. baseball's traditional 2), per Football
-// Outsiders' original research on the NFL.
-const PYTHAGOREAN_EXPONENT = 2.37;
+// Exponent used for Pythagorean win expectation. Fit directly to this
+// league's own history (all manager-seasons on record) rather than
+// borrowed from the NFL: 6.10 is the value that minimizes squared error
+// between the formula's predicted win% and each manager-season's actual
+// regular-season win%, found by a golden-section search over
+// test/fit_pythagorean_exponent.py. Fantasy scores cluster far more
+// tightly around the mean (this league's week-to-week coefficient of
+// variation is ~18-19%) than real NFL team scoring does (~45-50%, which is
+// what the commonly-cited 2.37 football exponent is tuned for), and a
+// tighter score distribution calls for a steeper exponent — 6.10 cuts
+// prediction error (mean squared error) roughly in half versus 2.37 on
+// this league's actual results. Re-run that script every season or two to
+// check whether the fitted value has drifted as more seasons are added.
+const PYTHAGOREAN_EXPONENT = 6.1;
 
 /**
  * The win percentage a manager's record "should" be, based purely on points

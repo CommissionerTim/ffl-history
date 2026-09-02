@@ -90,11 +90,22 @@ points that year (1876.12 vs. 1562.85), so Ben is credited with the 2023
 Each has a hover "ⓘ" next to its column header on the site itself with a
 plain-language explainer; here's the exact math:
 
-- **Pythagorean win expectation** — `PF^2.37 / (PF^2.37 + PA^2.37)`, the win%
-  a record "should" be based only on points scored (PF) vs. points allowed
-  (PA), independent of actual wins/losses. 2.37 is the commonly-cited
-  football-tuned exponent (vs. baseball's traditional 2), from Football
-  Outsiders' research on the NFL. See `pythagoreanWinPct` in `calc.js`.
+- **Pythagorean win expectation** — `PF^6.1 / (PF^6.1 + PA^6.1)`, the win% a
+  record "should" be based only on points scored (PF) vs. points allowed
+  (PA), independent of actual wins/losses. The 6.1 exponent is **fit to
+  this league's own history**, not borrowed from anywhere: it's the value
+  that minimizes squared error between predicted and actual regular-season
+  win% across every manager-season on record (`test/fit_pythagorean_exponent.py`,
+  a golden-section search — re-run it every season or two to check whether
+  it's drifted as more data comes in). This league previously used the
+  commonly-cited football-tuned 2.37 (Football Outsiders' research on real
+  NFL scoring, vs. baseball's traditional 2), but that's calibrated for
+  real NFL team scoring, which is both lower-magnitude and proportionally
+  much noisier week-to-week (~45-50% coefficient of variation) than fantasy
+  scoring (~18-19% here). A tighter score distribution calls for a steeper
+  exponent — fitting directly to our own results roughly halves prediction
+  error (mean squared error) versus 2.37. See `pythagoreanWinPct` in
+  `calc.js`.
 - **Win% over/under Pythagorean** — actual regular-season win% minus
   Pythagorean win%. Positive means a manager won more than their scoring
   predicted (lucky matchups/timing); negative means they won less.
@@ -147,4 +158,5 @@ npm install
 node run_calc.mjs          # prints computed leaderboard as JSON
 python3 independent_check.py   # cross-checks it independently
 node e2e.mjs                # full browser test of the real site files
+python3 fit_pythagorean_exponent.py   # re-check the fitted exponent as data grows
 ```

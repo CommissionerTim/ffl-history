@@ -49,7 +49,7 @@ all_rows["IsRegSeasonFirst"] = all_rows.apply(lambda r: r["ManagerKey"] == leade
 # Index (Points Scored Rank - Final Standing).
 all_rows["PAGame"] = all_rows["Points Against"] / all_rows["RegDenom"]
 
-PYTHAG_EXP = 2.37
+PYTHAG_EXP = 6.1  # fit to this league's own history -- see fit_pythagorean_exponent.py
 all_rows["PythagWinPct"] = (all_rows["Points Scored"] ** PYTHAG_EXP) / (
     all_rows["Points Scored"] ** PYTHAG_EXP + all_rows["Points Against"] ** PYTHAG_EXP
 )
