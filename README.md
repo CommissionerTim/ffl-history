@@ -7,12 +7,16 @@ JavaScript — nothing here is estimated or hand-typed.
 ## Pages
 
 - `index.html` — All-Time Records: career totals (sortable) + the record book.
-  The career table's last four columns are each manager's personal single-season
+  The career table's columns include each manager's personal single-season
   bests/worsts: Best/Worst Single-Season Record (by regular-season win%),
-  Highest Scoring Season (best single-season points/game), and Highest
-  Single-Week Score. A manager with no recorded weekly high in any season
-  shows "—" there, never "0.00".
-- `season.html` — Season Stats: pick a year, see that year's full standings (sortable).
+  Highest Scoring Season (best single-season points/game), Highest
+  Single-Week Score, Highest Points-Against/Game, Highest Single-Season
+  Z-Score, and Luckiest/Unluckiest Season (see "Advanced stats" below). A
+  manager with no recorded weekly high in any season shows "—" there,
+  never "0.00".
+- `season.html` — Season Stats: pick a year, see that year's full standings
+  (sortable), including Z-score, Pythagorean win expectation, and win%
+  over/under Pythagorean expectation for that season (see "Advanced stats").
 - `hall-of-fame.html` — one photo card per year's champion.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
 - `rules.html` — the league's custom rules, pulled live from a Google Doc.
@@ -76,6 +80,35 @@ resort. See `regSeasonLeaderForYear` in `calc.js`.
 In the 2023 season, Ethan and Ben tied exactly at 9-4. Ben scored more
 points that year (1876.12 vs. 1562.85), so Ben is credited with the 2023
 #1 regular-season finish.
+
+### Advanced stats (Season Stats + career-table columns)
+
+Each has a hover "ⓘ" next to its column header on the site itself with a
+plain-language explainer; here's the exact math:
+
+- **Pythagorean win expectation** — `PF^2.37 / (PF^2.37 + PA^2.37)`, the win%
+  a record "should" be based only on points scored (PF) vs. points allowed
+  (PA), independent of actual wins/losses. 2.37 is the commonly-cited
+  football-tuned exponent (vs. baseball's traditional 2), from Football
+  Outsiders' research on the NFL. See `pythagoreanWinPct` in `calc.js`.
+- **Win% over/under Pythagorean** — actual regular-season win% minus
+  Pythagorean win%. Positive means a manager won more than their scoring
+  predicted (lucky matchups/timing); negative means they won less.
+- **Z-score (points scored)** — how many standard deviations above or below
+  that *season's own* league mean a manager's points scored were, using the
+  population standard deviation (a season's rows are the whole league that
+  year, not a sample of it). 0 = exactly average.
+- **Luck Index** — `Points Scored Rank (that season) − Final Standing (that
+  season)`, where Points Scored Rank is 1 for the most points scored that
+  year. Positive = finished better than their scoring alone would predict
+  (lucky); negative = finished worse (unlucky). "Luckiest/Unluckiest Season"
+  on the career table is each manager's single best/worst Luck Index, with
+  the year it happened.
+
+All four are cross-checked at the individual manager-season level (not just
+in aggregate) against an independent pandas recomputation in
+`test/independent_check.py` — 0 mismatches across every manager-year before
+this shipped.
 
 ## Extending the site later
 

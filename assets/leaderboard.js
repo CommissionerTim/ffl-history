@@ -9,6 +9,13 @@ document.querySelector('#site-title').textContent = SITE_TITLE;
 
 const pct = (v) => (v === null || v === undefined ? '—' : (v * 100).toFixed(1) + '%');
 const num = (v, digits = 0) => (v === null || v === undefined ? '—' : v.toFixed(digits));
+const signedNum = (v, digits = 2) => {
+  if (v === null || v === undefined) return '—';
+  const rounded = Number(v.toFixed(digits));
+  const s = Math.abs(rounded).toFixed(digits);
+  return rounded > 0 ? '+' + s : rounded < 0 ? '-' + s : s;
+};
+const signedInt = (v) => (v === null || v === undefined ? '—' : v > 0 ? '+' + v : String(v));
 
 async function main() {
   await requireAuth(PASSWORD_HASH);
@@ -170,6 +177,29 @@ function renderCareerTable(careers) {
       key: 'bestSingleWeek', label: 'Highest Single-Week Score', numeric: true,
       get: (r) => r.bestSingleWeek ? r.bestSingleWeek.value : null,
       format: (r) => r.bestSingleWeek ? `${num(r.bestSingleWeek.value, 2)} (${r.bestSingleWeek.year})` : '—',
+    },
+    {
+      key: 'bestPAGame', label: 'Highest Points-Against/Game (Season)', numeric: true,
+      get: (r) => r.bestPAGame ? r.bestPAGame.value : null,
+      format: (r) => r.bestPAGame ? `${num(r.bestPAGame.value, 2)} (${r.bestPAGame.year})` : '—',
+    },
+    {
+      key: 'bestZScoreSeason', label: 'Highest Single-Season Z-Score', numeric: true,
+      get: (r) => r.bestZScoreSeason ? r.bestZScoreSeason.value : null,
+      format: (r) => r.bestZScoreSeason ? `${signedNum(r.bestZScoreSeason.value, 2)} (${r.bestZScoreSeason.year})` : '—',
+      tooltip: "The manager's highest single-season Z-score — how many standard deviations above that season's league-average points scored they were.",
+    },
+    {
+      key: 'luckiestSeason', label: 'Luckiest Season', numeric: true,
+      get: (r) => r.luckiestSeason ? r.luckiestSeason.value : null,
+      format: (r) => r.luckiestSeason ? `${signedInt(r.luckiestSeason.value)} (${r.luckiestSeason.year})` : '—',
+      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Positive = finished better than their scoring alone would predict (lucky). This shows the manager's single luckiest season.",
+    },
+    {
+      key: 'unluckiestSeason', label: 'Unluckiest Season', numeric: true,
+      get: (r) => r.unluckiestSeason ? r.unluckiestSeason.value : null,
+      format: (r) => r.unluckiestSeason ? `${signedInt(r.unluckiestSeason.value)} (${r.unluckiestSeason.year})` : '—',
+      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Negative = finished worse than their scoring alone would predict (unlucky). This shows the manager's single unluckiest season.",
     },
   ];
   renderSortableTable(table, careers, columns, 'manager', { key: 'regW', dir: -1 });

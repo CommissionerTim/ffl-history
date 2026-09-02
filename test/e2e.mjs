@@ -180,6 +180,28 @@ const carterRow = await page.$$eval('#career-table tbody tr', (rows) => {
 });
 assert(carterRow && carterRow[bestWeekIndex] === '—', `Carter (no recorded weekly high) shows "—" for highest single-week score (got ${carterRow?.[bestWeekIndex]})`);
 
+// Pythagorean/luck-driven career columns, cross-checked against the independent pandas run.
+const bestPAGameIndex = await headerIndex('#career-table', 'Highest Points-Against/Game');
+const bestZScoreIndex = await headerIndex('#career-table', 'Highest Single-Season Z-Score');
+const luckiestIndex = await headerIndex('#career-table', 'Luckiest Season');
+const unluckiestIndex = await headerIndex('#career-table', 'Unluckiest Season');
+assert(timRow && timRow[bestPAGameIndex] === '141.26 (2021)', `Tim highest points-against/game = 141.26 (2021) (got ${timRow?.[bestPAGameIndex]})`);
+assert(timRow && timRow[bestZScoreIndex] === '+2.02 (2025)', `Tim highest single-season z-score = +2.02 (2025) (got ${timRow?.[bestZScoreIndex]})`);
+assert(timRow && timRow[luckiestIndex] === '+2 (2021)', `Tim luckiest season = +2 (2021) (got ${timRow?.[luckiestIndex]})`);
+assert(timRow && timRow[unluckiestIndex] === '-3 (2016)', `Tim unluckiest season = -3 (2016) (got ${timRow?.[unluckiestIndex]})`);
+
+const marisaCareerRow = await page.$$eval('#career-table tbody tr', (rows) => {
+  const r = rows.find((tr) => tr.children[0].textContent === 'Marisa');
+  return r ? [...r.children].map((td) => td.textContent) : null;
+});
+assert(marisaCareerRow && marisaCareerRow[luckiestIndex] === '+5 (2015)', `Marisa luckiest season = +5 (2015) (got ${marisaCareerRow?.[luckiestIndex]})`);
+assert(marisaCareerRow && marisaCareerRow[unluckiestIndex] === '-4 (2021)', `Marisa unluckiest season = -4 (2021) (got ${marisaCareerRow?.[unluckiestIndex]})`);
+
+// Hover-tooltip icons: Z-score, Luckiest Season, Unluckiest Season on the career table.
+const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.title));
+assert(careerTooltips.length === 3, `career table has 3 tooltip icons: z-score, luckiest, unluckiest (got ${careerTooltips.length})`);
+assert(careerTooltips.every((t) => t.length > 20), 'career table tooltips carry real explainer text, not empty strings');
+
 // Sorting: click "Championships" header, confirm Tim (3) sorts to top in descending order.
 await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // ascending first
 await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // then descending
@@ -208,6 +230,25 @@ const marisaRow2025 = await page.$$eval('#season-table tbody tr', (rows) => {
 });
 console.log('Marisa 2025 row:', marisaRow2025);
 assert(marisaRow2025 && marisaRow2025[1] === '2', `2025 Marisa final standing = 2 (got ${marisaRow2025?.[1]})`);
+
+// New Season Stats columns: Z-score, Pythagorean win%, win% over/under Pythagorean.
+// Expected values cross-checked independently in pandas (see independent_check.py).
+const timRow2025 = await page.$$eval('#season-table tbody tr', (rows) => {
+  const r = rows.find((tr) => tr.children[0].textContent === 'Tim');
+  return r ? [...r.children].map((td) => td.textContent) : null;
+});
+console.log('Tim 2025 season row:', timRow2025);
+const zScoreIdx = await headerIndex('#season-table', 'Z-Score');
+const pythagIdx = await headerIndex('#season-table', 'Pythagorean Win%');
+const overUnderIdx = await headerIndex('#season-table', 'Win% +/- Pythagorean');
+assert(timRow2025 && timRow2025[zScoreIdx] === '+2.02', `Tim 2025 Z-score = +2.02 (got ${timRow2025?.[zScoreIdx]})`);
+assert(timRow2025 && timRow2025[pythagIdx] === '56.9%', `Tim 2025 Pythagorean win% = 56.9% (got ${timRow2025?.[pythagIdx]})`);
+assert(timRow2025 && timRow2025[overUnderIdx] === '+20.0%', `Tim 2025 win% over/under Pythagorean = +20.0% (got ${timRow2025?.[overUnderIdx]})`);
+
+// Hover-tooltip icons exist with real plain-language explainer text.
+const seasonTooltips = await page.$$eval('#season-table thead .th-info', (els) => els.map((el) => el.title));
+assert(seasonTooltips.length === 3, `season table has 3 tooltip icons: Z-score, Pythagorean win%, win% +/- Pythagorean (got ${seasonTooltips.length})`);
+assert(seasonTooltips.every((t) => t.length > 20), 'season table tooltips carry real explainer text, not empty strings');
 
 // Switch to a year with blank Highest Single Week Score (2018) and confirm it renders as "—", not "0.00".
 await page.selectOption('#year-select', '2018');

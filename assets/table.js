@@ -7,7 +7,9 @@
 /**
  * @param {HTMLTableElement} table
  * @param {Array<object>} data
- * @param {Array<{key:string, label:string, get:(row)=>any, format:(row)=>string, numeric?:boolean}>} columns
+ * @param {Array<{key:string, label:string, get:(row)=>any, format:(row)=>string, numeric?:boolean, tooltip?:string}>} columns
+ *   `tooltip`, when present, adds a small "ⓘ" next to the header with that
+ *   plain-language text shown on hover (native title attribute).
  * @param {string} managerKeyField - field on each row holding the manager's display name, for the alphabetical tiebreak
  * @param {{key:string, dir:1|-1}} [initialSort]
  */
@@ -43,13 +45,24 @@ export function renderSortableTable(table, data, columns, managerKeyField, initi
     const headRow = document.createElement('tr');
     for (const col of columns) {
       const th = document.createElement('th');
-      th.textContent = col.label;
       th.tabIndex = 0;
       th.setAttribute('role', 'button');
-      if (col.key === sortKey) {
-        th.classList.add('sorted');
-        th.textContent += sortDir === 1 ? ' ▲' : ' ▼';
+
+      const labelText = col.label + (col.key === sortKey ? (sortDir === 1 ? ' ▲' : ' ▼') : '');
+      th.appendChild(document.createTextNode(labelText));
+      if (col.key === sortKey) th.classList.add('sorted');
+
+      if (col.tooltip) {
+        const info = document.createElement('span');
+        info.className = 'th-info';
+        info.textContent = 'ⓘ';
+        info.title = col.tooltip;
+        info.setAttribute('aria-label', col.tooltip);
+        // Don't let a click/hover on the icon itself trigger a sort toggle.
+        info.addEventListener('click', (e) => e.stopPropagation());
+        th.appendChild(info);
       }
+
       const activate = () => {
         if (sortKey === col.key) {
           sortDir = -sortDir;

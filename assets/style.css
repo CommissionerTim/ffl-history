@@ -216,6 +216,16 @@ th {
 
 th.sorted { color: var(--ink); }
 
+.th-info {
+  display: inline-block;
+  margin-left: 0.3em;
+  cursor: help;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.th-info:hover { color: var(--accent); }
+
 td.num, th.num { text-align: right; }
 
 tbody tr:hover { background: #f2f6f3; }

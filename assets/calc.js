@@ -98,6 +98,33 @@ export function pointsPerGame(row) {
   return row.pointsScored / denom;
 }
 
+export function pointsAgainstPerGame(row) {
+  const denom = row.regW + row.regL + row.regT;
+  if (denom <= 0 || row.pointsAgainst === null) return null;
+  return row.pointsAgainst / denom;
+}
+
+// Exponent used for Pythagorean win expectation. 2.37 is the commonly-used
+// football-tuned value (vs. baseball's traditional 2), per Football
+// Outsiders' original research on the NFL.
+const PYTHAGOREAN_EXPONENT = 2.37;
+
+/**
+ * The win percentage a manager's record "should" be, based purely on points
+ * scored vs. points allowed that season — independent of their actual
+ * wins/losses. A common measure of how much of a record reflects scoring
+ * strength vs. schedule/matchup luck. Null if either total is missing.
+ */
+export function pythagoreanWinPct(row, exponent = PYTHAGOREAN_EXPONENT) {
+  if (row.pointsScored === null || row.pointsAgainst === null) return null;
+  if (row.pointsScored < 0 || row.pointsAgainst < 0) return null;
+  const pf = Math.pow(row.pointsScored, exponent);
+  const pa = Math.pow(row.pointsAgainst, exponent);
+  const denom = pf + pa;
+  if (denom <= 0) return null;
+  return pf / denom;
+}
+
 /** The Final Standing value that represents "last place" for a given year's rows. */
 export function lastPlaceStandingForYear(yearRows) {
   return Math.max(...yearRows.map((r) => r.finalStanding));
@@ -133,6 +160,77 @@ export function regSeasonLeaderForYear(yearRows) {
   return leader;
 }
 
+/**
+ * Standard-competition ranking (1224) of a year's rows by points scored,
+ * highest first: rank 1 = most points scored that year. Equal points share
+ * a rank (the next distinct score's rank skips accordingly) — points
+ * scored are real-valued totals, so an exact tie is vanishingly unlikely,
+ * but this stays fully deterministic if it ever happens (ties broken
+ * alphabetically for ordering only, not for the shared rank value itself).
+ * Rows with no points-scored figure are left out of the returned map.
+ * @returns {Map<string, number>} managerKey -> rank
+ */
+export function pointsScoredRanksForYear(yearRows) {
+  const sorted = [...yearRows]
+    .filter((r) => r.pointsScored !== null)
+    .sort((a, b) => b.pointsScored - a.pointsScored || a.manager.localeCompare(b.manager));
+
+  const ranks = new Map();
+  let rank = 0;
+  let seen = 0;
+  let prevScore = null;
+  for (const r of sorted) {
+    seen += 1;
+    if (prevScore === null || Math.abs(r.pointsScored - prevScore) > EPS) {
+      rank = seen;
+      prevScore = r.pointsScored;
+    }
+    ranks.set(r.managerKey, rank);
+  }
+  return ranks;
+}
+
+/**
+ * Z-score of each manager's points scored against that season's own
+ * league mean/standard deviation (population std, since a season's rows
+ * are the entire league that year, not a sample of it). 0 = exactly
+ * average. If every row has the same points scored (std = 0, degenerate),
+ * everyone is scored 0 rather than dividing by zero.
+ * @returns {Map<string, number>} managerKey -> z-score
+ */
+export function pointsScoredZScoresForYear(yearRows) {
+  const values = yearRows.map((r) => r.pointsScored).filter((v) => v !== null);
+  const zScores = new Map();
+  if (values.length === 0) return zScores;
+
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  const std = Math.sqrt(variance);
+
+  for (const r of yearRows) {
+    if (r.pointsScored === null) continue;
+    zScores.set(r.managerKey, std > EPS ? (r.pointsScored - mean) / std : 0);
+  }
+  return zScores;
+}
+
+/**
+ * Luck Index for one year's rows: that manager's Points Scored Rank minus
+ * their Final Standing. Positive = finished better than their scoring
+ * alone would predict (lucky); negative = finished worse (unlucky).
+ * @returns {Map<string, number>} managerKey -> luck index
+ */
+export function luckIndexForYear(yearRows) {
+  const ranks = pointsScoredRanksForYear(yearRows);
+  const luck = new Map();
+  for (const r of yearRows) {
+    const rank = ranks.get(r.managerKey);
+    if (rank === undefined || r.finalStanding === null) continue;
+    luck.set(r.managerKey, rank - r.finalStanding);
+  }
+  return luck;
+}
+
 // ---------------------------------------------------------------------
 // Career aggregation
 // ---------------------------------------------------------------------
@@ -143,13 +241,20 @@ export function regSeasonLeaderForYear(yearRows) {
  * @returns {Array} one career-totals object per manager, sorted alphabetically.
  */
 export function aggregateCareers(seasons) {
-  // Precompute per-year last place + the reg-season leader's key once.
+  // Precompute per-year last place + the reg-season leader's key once, plus
+  // each year's points-scored z-scores and Luck Index (both need the whole
+  // year's rows, not just one manager's, so they're computed once per year
+  // rather than recomputed per manager below).
   const lastPlaceByYear = new Map();
   const regLeaderKeyByYear = new Map();
+  const zScoreByYear = new Map(); // year -> Map<managerKey, zscore>
+  const luckByYear = new Map(); // year -> Map<managerKey, luckIndex>
   for (const { year, rows } of seasons) {
     lastPlaceByYear.set(year, rows.length ? lastPlaceStandingForYear(rows) : null);
     const leader = regSeasonLeaderForYear(rows);
     regLeaderKeyByYear.set(year, leader ? leader.managerKey : null);
+    zScoreByYear.set(year, pointsScoredZScoresForYear(rows));
+    luckByYear.set(year, luckIndexForYear(rows));
   }
 
   const byKey = new Map(); // managerKey -> { nameCounts: Map, rows: [] }
@@ -190,6 +295,10 @@ export function aggregateCareers(seasons) {
     let worstRecord = null;
     let bestPPGSeason = null; // { year, ppg }
     let bestSingleWeek = null; // { year, value }
+    let bestPAGame = null; // { year, value } - highest points-against/game
+    let bestZScoreSeason = null; // { year, value }
+    let luckiestSeason = null; // { year, value } - max Luck Index
+    let unluckiestSeason = null; // { year, value } - min Luck Index
 
     for (const r of rows) {
       regW += r.regW; regL += r.regL; regT += r.regT;
@@ -242,6 +351,44 @@ export function aggregateCareers(seasons) {
       ) {
         bestSingleWeek = { year: r.year, value: r.highestWeek };
       }
+
+      const paGame = pointsAgainstPerGame(r);
+      if (
+        paGame !== null &&
+        (bestPAGame === null ||
+          paGame > bestPAGame.value + EPS ||
+          (Math.abs(paGame - bestPAGame.value) < EPS && r.year < bestPAGame.year))
+      ) {
+        bestPAGame = { year: r.year, value: paGame };
+      }
+
+      const zScore = zScoreByYear.get(r.year)?.get(managerKey);
+      if (
+        zScore !== undefined &&
+        (bestZScoreSeason === null ||
+          zScore > bestZScoreSeason.value + EPS ||
+          (Math.abs(zScore - bestZScoreSeason.value) < EPS && r.year < bestZScoreSeason.year))
+      ) {
+        bestZScoreSeason = { year: r.year, value: zScore };
+      }
+
+      const luck = luckByYear.get(r.year)?.get(managerKey);
+      if (
+        luck !== undefined &&
+        (luckiestSeason === null ||
+          luck > luckiestSeason.value + EPS ||
+          (Math.abs(luck - luckiestSeason.value) < EPS && r.year < luckiestSeason.year))
+      ) {
+        luckiestSeason = { year: r.year, value: luck };
+      }
+      if (
+        luck !== undefined &&
+        (unluckiestSeason === null ||
+          luck < unluckiestSeason.value - EPS ||
+          (Math.abs(luck - unluckiestSeason.value) < EPS && r.year < unluckiestSeason.year))
+      ) {
+        unluckiestSeason = { year: r.year, value: luck };
+      }
     }
 
     const regDenom = regW + regL + regT;
@@ -266,6 +413,10 @@ export function aggregateCareers(seasons) {
       worstRecord,
       bestPPGSeason,
       bestSingleWeek,
+      bestPAGame,
+      bestZScoreSeason,
+      luckiestSeason,
+      unluckiestSeason,
     });
   }
 

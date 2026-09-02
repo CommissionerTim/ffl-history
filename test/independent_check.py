@@ -43,6 +43,28 @@ def reg_season_leader_key(year_df):
 leader_key_by_year = {year: reg_season_leader_key(g) for year, g in all_rows.groupby("Year")}
 all_rows["IsRegSeasonFirst"] = all_rows.apply(lambda r: r["ManagerKey"] == leader_key_by_year[r["Year"]], axis=1)
 
+# Points-against/game, Pythagorean win expectation (football-tuned exponent
+# per Football Outsiders), Points Scored Rank (1 = most that year, ties
+# share a rank), Z-score (population std within that season), and Luck
+# Index (Points Scored Rank - Final Standing).
+all_rows["PAGame"] = all_rows["Points Against"] / all_rows["RegDenom"]
+
+PYTHAG_EXP = 2.37
+all_rows["PythagWinPct"] = (all_rows["Points Scored"] ** PYTHAG_EXP) / (
+    all_rows["Points Scored"] ** PYTHAG_EXP + all_rows["Points Against"] ** PYTHAG_EXP
+)
+
+def zscore_group(g):
+    mean = g["Points Scored"].mean()
+    std = g["Points Scored"].std(ddof=0)  # population std -- a season's rows are the whole league that year
+    if pd.isna(std) or std == 0:
+        return pd.Series(0.0, index=g.index)
+    return (g["Points Scored"] - mean) / std
+
+all_rows["ZScore"] = all_rows.groupby("Year", group_keys=False).apply(zscore_group)
+all_rows["PointsScoredRank"] = all_rows.groupby("Year")["Points Scored"].rank(ascending=False, method="min").astype(int)
+all_rows["LuckIndex"] = all_rows["PointsScoredRank"] - all_rows["Final Standing"]
+
 # Career aggregation
 careers = all_rows.groupby("ManagerKey").agg(
     seasonsPlayed=("Year", "count"),
@@ -171,6 +193,75 @@ for key, g in all_rows.groupby("ManagerKey"):
         personal_mismatches += 1
 
 print(f"\n{personal_mismatches} personal-best/worst mismatches found across {len(careers)} managers.\n")
+
+print("=== Season Stats row-level check: pandas vs calc.js (every manager-year) ===")
+js_season_stats = {(s["year"], s["managerKey"]): s for s in js_out["seasonStats"]}
+row_mismatches = 0
+for _, row in all_rows.iterrows():
+    key = (int(row["Year"]), row["ManagerKey"])
+    js = js_season_stats.get(key)
+    if js is None:
+        print(f"MISMATCH {key}: missing from JS seasonStats")
+        row_mismatches += 1
+        continue
+    if pd.notna(row["PythagWinPct"]):
+        if js["pythagWinPct"] is None or abs(row["PythagWinPct"] - js["pythagWinPct"]) > 1e-6:
+            print(f"MISMATCH {key}.pythagWinPct: pandas={row['PythagWinPct']} js={js['pythagWinPct']}")
+            row_mismatches += 1
+    elif js["pythagWinPct"] is not None:
+        print(f"MISMATCH {key}.pythagWinPct: pandas=NaN js={js['pythagWinPct']}")
+        row_mismatches += 1
+    if abs(row["ZScore"] - js["zScore"]) > 1e-6:
+        print(f"MISMATCH {key}.zScore: pandas={row['ZScore']} js={js['zScore']}")
+        row_mismatches += 1
+    if int(row["PointsScoredRank"]) != js["pointsScoredRank"]:
+        print(f"MISMATCH {key}.pointsScoredRank: pandas={row['PointsScoredRank']} js={js['pointsScoredRank']}")
+        row_mismatches += 1
+    if int(row["LuckIndex"]) != js["luckIndex"]:
+        print(f"MISMATCH {key}.luckIndex: pandas={row['LuckIndex']} js={js['luckIndex']}")
+        row_mismatches += 1
+
+print(f"\n{row_mismatches} row-level mismatches found across {len(all_rows)} manager-years.\n")
+
+print("=== Personal PA/Game, Z-score, Luck Index bests: pandas vs calc.js ===")
+extra_mismatches = 0
+for key, g in all_rows.groupby("ManagerKey"):
+    js = js_careers.get(key)
+    if js is None:
+        continue
+
+    # Highest points-against/game in a single season; ties -> earliest year.
+    g_pa = g.dropna(subset=["PAGame"]).sort_values(["PAGame", "Year"], ascending=[False, True])
+    js_pa = js["bestPAGame"]
+    if len(g_pa):
+        r = g_pa.iloc[0]
+        if js_pa is None or r["Year"] != js_pa["year"] or abs(r["PAGame"] - js_pa["value"]) > 1e-6:
+            print(f"MISMATCH {key}.bestPAGame: pandas={r[['Year','PAGame']].to_dict()} js={js_pa}")
+            extra_mismatches += 1
+    elif js_pa is not None:
+        print(f"MISMATCH {key}.bestPAGame: pandas=None js={js_pa}")
+        extra_mismatches += 1
+
+    # Highest single-season Z-score; ties -> earliest year.
+    r = g.sort_values(["ZScore", "Year"], ascending=[False, True]).iloc[0]
+    js_z = js["bestZScoreSeason"]
+    if js_z is None or r["Year"] != js_z["year"] or abs(r["ZScore"] - js_z["value"]) > 1e-6:
+        print(f"MISMATCH {key}.bestZScoreSeason: pandas={r[['Year','ZScore']].to_dict()} js={js_z}")
+        extra_mismatches += 1
+
+    # Luckiest / unluckiest season (max/min Luck Index); ties -> earliest year.
+    r_max = g.sort_values(["LuckIndex", "Year"], ascending=[False, True]).iloc[0]
+    r_min = g.sort_values(["LuckIndex", "Year"], ascending=[True, True]).iloc[0]
+    js_luckiest = js["luckiestSeason"]
+    js_unluckiest = js["unluckiestSeason"]
+    if js_luckiest is None or r_max["Year"] != js_luckiest["year"] or r_max["LuckIndex"] != js_luckiest["value"]:
+        print(f"MISMATCH {key}.luckiestSeason: pandas={r_max[['Year','LuckIndex']].to_dict()} js={js_luckiest}")
+        extra_mismatches += 1
+    if js_unluckiest is None or r_min["Year"] != js_unluckiest["year"] or r_min["LuckIndex"] != js_unluckiest["value"]:
+        print(f"MISMATCH {key}.unluckiestSeason: pandas={r_min[['Year','LuckIndex']].to_dict()} js={js_unluckiest}")
+        extra_mismatches += 1
+
+print(f"\n{extra_mismatches} PA/Z-score/Luck career-best mismatches found across {len(careers)} managers.\n")
 
 print("=== 2023 regular-season-first tie check ===")
 print(all_rows[all_rows["Year"] == 2023][["Manager", "Reg Season W", "Reg Season L", "RegWinPct", "IsRegSeasonFirst"]])

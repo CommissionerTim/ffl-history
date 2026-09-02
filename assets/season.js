@@ -1,7 +1,7 @@
 import { SHEET_ID, YEARS, PASSWORD_HASH, SITE_TITLE } from '../config.js';
 import { requireAuth } from './auth.js';
 import { loadAllSeasons } from './data.js';
-import { regSeasonWinPct, playoffWinPct, pointsPerGame } from './calc.js';
+import { regSeasonWinPct, playoffWinPct, pointsPerGame, pythagoreanWinPct, pointsScoredZScoresForYear } from './calc.js';
 import { renderSortableTable } from './table.js';
 
 document.title = SITE_TITLE + ' — Season Stats';
@@ -9,6 +9,18 @@ document.querySelector('#site-title').textContent = SITE_TITLE;
 
 const pct = (v) => (v === null || v === undefined ? '—' : (v * 100).toFixed(1) + '%');
 const num = (v, digits = 0) => (v === null || v === undefined ? '—' : v.toFixed(digits));
+const signedNum = (v, digits = 2) => {
+  if (v === null || v === undefined) return '—';
+  const rounded = Number(v.toFixed(digits));
+  const s = Math.abs(rounded).toFixed(digits);
+  return rounded > 0 ? '+' + s : rounded < 0 ? '-' + s : s;
+};
+const signedPct = (v, digits = 1) => {
+  if (v === null || v === undefined) return '—';
+  const rounded = Number((v * 100).toFixed(digits));
+  const s = Math.abs(rounded).toFixed(digits) + '%';
+  return rounded > 0 ? '+' + s : rounded < 0 ? '-' + s : s;
+};
 
 let seasonsByYear = new Map();
 
@@ -59,12 +71,20 @@ function renderYear(year) {
     return;
   }
 
-  const rows = season.rows.map((r) => ({
-    ...r,
-    regWinPct: regSeasonWinPct(r),
-    playoffWinPct: playoffWinPct(r),
-    ppg: pointsPerGame(r),
-  }));
+  const zScores = pointsScoredZScoresForYear(season.rows);
+  const rows = season.rows.map((r) => {
+    const regWinPct = regSeasonWinPct(r);
+    const pythagWinPct = pythagoreanWinPct(r);
+    return {
+      ...r,
+      regWinPct,
+      playoffWinPct: playoffWinPct(r),
+      ppg: pointsPerGame(r),
+      zScore: zScores.get(r.managerKey) ?? null,
+      pythagWinPct,
+      winPctOverUnder: regWinPct !== null && pythagWinPct !== null ? regWinPct - pythagWinPct : null,
+    };
+  });
 
   const columns = [
     { key: 'manager', label: 'Manager', get: (r) => r.manager, format: (r) => r.manager },
@@ -84,6 +104,21 @@ function renderYear(year) {
     { key: 'ppg', label: 'Points/Game', numeric: true, get: (r) => r.ppg, format: (r) => num(r.ppg, 2) },
     { key: 'highestWeek', label: 'Highest Single Week', numeric: true, get: (r) => r.highestWeek, format: (r) => num(r.highestWeek, 2) },
     { key: 'moves', label: 'Moves', numeric: true, get: (r) => r.moves, format: (r) => String(r.moves) },
+    {
+      key: 'zScore', label: 'Z-Score (Points)', numeric: true,
+      get: (r) => r.zScore, format: (r) => signedNum(r.zScore, 2),
+      tooltip: "How many standard deviations above or below that season's league-average points scored this manager was. 0 = exactly average; positive = above average; negative = below average.",
+    },
+    {
+      key: 'pythagWinPct', label: 'Pythagorean Win%', numeric: true,
+      get: (r) => r.pythagWinPct, format: (r) => pct(r.pythagWinPct),
+      tooltip: "The win percentage this record \"should\" be based only on points scored vs. points allowed (PF^2.37 / (PF^2.37 + PA^2.37)) — not the actual wins and losses. A common way to see how much of a record reflects scoring strength vs. matchup luck.",
+    },
+    {
+      key: 'winPctOverUnder', label: 'Win% +/- Pythagorean', numeric: true,
+      get: (r) => r.winPctOverUnder, format: (r) => signedPct(r.winPctOverUnder, 1),
+      tooltip: 'Actual regular-season win percentage minus Pythagorean win expectation. Positive = won more games than their scoring predicted (lucky); negative = won fewer (unlucky).',
+    },
   ];
 
   renderSortableTable(table, rows, columns, 'manager', { key: 'finalStanding', dir: 1 });
