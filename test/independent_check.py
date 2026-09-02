@@ -122,6 +122,7 @@ print(all_rows[all_rows["Year"] == 2023][["Manager", "Reg Season W", "Reg Season
 print("\n=== Record book (pandas) ===")
 print("Highest single week:", all_rows.loc[all_rows["Highest Single Week Score"].idxmax()][["Manager", "Year", "Highest Single Week Score"]].to_dict() if all_rows["Highest Single Week Score"].notna().any() else None)
 print("Most championships:", careers.loc[careers["championships"] == careers["championships"].max(), ["ManagerKey", "championships"]].to_dict("records"))
+print("Most regular season wins:", careers.loc[careers["regW"] == careers["regW"].max(), ["ManagerKey", "regW"]].to_dict("records"))
 print("Most reg season firsts:", careers.loc[careers["regSeasonFirsts"] == careers["regSeasonFirsts"].max(), ["ManagerKey", "regSeasonFirsts"]].to_dict("records"))
 print("Most last place:", careers.loc[careers["lastPlaceFinishes"] == careers["lastPlaceFinishes"].max(), ["ManagerKey", "lastPlaceFinishes"]].to_dict("records"))
 best_ppg_idx = all_rows["PPG"].idxmax()

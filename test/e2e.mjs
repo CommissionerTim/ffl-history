@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const siteDir = path.join(__dirname, '..');
+const siteDir = path.join(__dirname, '../site');
 const fixturesDir = path.join(__dirname, 'fixtures');
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
@@ -102,9 +102,31 @@ assert(
   'most championships = 3'
 );
 assert(
+  recordCards.find((c) => c.label === 'Most Regular Season Wins')?.value === '80',
+  'most regular season wins = 80'
+);
+assert(
+  recordCards.find((c) => c.label === 'Most Regular Season Wins')?.holders.includes('Marisa'),
+  'most regular season wins holder = Marisa'
+);
+assert(
   recordCards.find((c) => c.label.includes('#1 regular-season'))?.value === '4',
   'most #1 regular-season finishes = 4'
 );
+assert(
+  recordCards.map((c) => c.label).join('|') ===
+    [
+      'Most championships',
+      'Most Regular Season Wins',
+      'Most #1 regular-season finishes',
+      'Most last-place finishes',
+      'Highest single-week score ever',
+      'Best single-season points/game',
+    ].join('|'),
+  `record cards are in the requested order (got: ${recordCards.map((c) => c.label).join(', ')})`
+);
+const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
+assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
 const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
 assert(lastPlaceCard?.value === '3', 'most last-place finishes = 3');
 assert(
@@ -112,27 +134,52 @@ assert(
   'most last-place finishes is a tie: Ethan and Kuba'
 );
 
-// Check Tim's row directly for career totals sanity.
+// Column header lookup helper (index-agnostic — survives future column reordering).
+async function headerIndex(tableSelector, matchText, excludeText) {
+  return page.$$eval(
+    `${tableSelector} thead th`,
+    (ths, args) => ths.findIndex((th) => th.textContent.includes(args.matchText) && (!args.excludeText || !th.textContent.includes(args.excludeText))),
+    { matchText, excludeText }
+  );
+}
+
+// Default sort (no header clicked yet) should be Reg W descending -> Marisa (80) on top.
+const topManagerByDefault = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
+assert(topManagerByDefault === 'Marisa', `default sort is Reg W descending, Marisa on top (got ${topManagerByDefault})`);
+
+const regWIndex = await headerIndex('#career-table', 'Reg W', 'Win%');
+const regWTopValue = await page.$eval(`#career-table tbody tr:first-child td:nth-child(${regWIndex + 1})`, (td) => td.textContent);
+assert(regWTopValue === '80', `top row's Reg W column reads 80 (got ${regWTopValue})`);
+
+// Check Tim's row directly for career totals sanity (Reg W/L/T are now separate columns).
 const timRow = await page.$$eval('#career-table tbody tr', (rows) => {
   const r = rows.find((tr) => tr.children[0].textContent === 'Tim');
   return r ? [...r.children].map((td) => td.textContent) : null;
 });
 console.log('Tim row:', timRow);
-assert(timRow && timRow[7] === '3', `Tim championships column = 3 (got ${timRow?.[7]})`);
+const champIndex = await headerIndex('#career-table', 'Championships', 'Champ. Game');
+const careerPointsIndex = await headerIndex('#career-table', 'Career Points (Reg)');
+assert(timRow && timRow[champIndex] === '3', `Tim championships column = 3 (got ${timRow?.[champIndex]})`);
+assert(careerPointsIndex !== -1, '"Career Points (Reg)" column header exists');
+assert(timRow && timRow[regWIndex] === '79', `Tim Reg W column = 79 (got ${timRow?.[regWIndex]})`);
 
 // Sorting: click "Championships" header, confirm Tim (3) sorts to top in descending order.
-const champHeaderIndex = await page.$$eval('#career-table thead th', (ths) =>
-  ths.findIndex((th) => th.textContent.includes('Championships') && !th.textContent.includes('Champ. Game'))
-);
-await page.click(`#career-table thead th:nth-child(${champHeaderIndex + 1})`); // ascending first
-await page.click(`#career-table thead th:nth-child(${champHeaderIndex + 1})`); // then descending
+await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // ascending first
+await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // then descending
 const topManagerAfterSort = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
 assert(topManagerAfterSort === 'Tim', `sorting by Championships desc puts Tim first (got ${topManagerAfterSort})`);
+
+// Page titles / nav labels reflect the renamed pages.
+assert((await page.title()).includes('All-Time Records'), 'index.html title includes "All-Time Records"');
+const navText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
+assert(navText.includes('All-Time Records') && navText.includes('Stats by Season'), `nav shows renamed labels (got ${navText})`);
 
 // ---- season.html: gate should already be unlocked (same session) ----
 await page.goto(`${baseUrl}/season.html`);
 const gateVisible = await page.$('.auth-box');
 assert(gateVisible === null, 'season.html does not re-prompt within the same session');
+
+assert((await page.title()).includes('Stats by Season'), 'season.html title includes "Stats by Season"');
 
 await page.waitForSelector('#season-table tbody tr');
 const selectedYear = await page.$eval('#year-select', (el) => el.value);

@@ -250,6 +250,7 @@ export function computeRecordBook(seasons, careers) {
   );
 
   const mostChampionships = tiedHolders(careers, (c) => c.championships);
+  const mostRegSeasonWins = tiedHolders(careers, (c) => c.regW);
   const mostRegSeasonFirsts = tiedHolders(careers, (c) => c.regSeasonFirsts);
   const mostLastPlace = tiedHolders(careers, (c) => c.lastPlaceFinishes);
 
@@ -266,6 +267,10 @@ export function computeRecordBook(seasons, careers) {
     mostChampionships: {
       value: mostChampionships.value,
       holders: mostChampionships.holders.map((c) => ({ manager: c.manager })),
+    },
+    mostRegSeasonWins: {
+      value: mostRegSeasonWins.value,
+      holders: mostRegSeasonWins.holders.map((c) => ({ manager: c.manager })),
     },
     mostRegSeasonFirsts: {
       value: mostRegSeasonFirsts.value,

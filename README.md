@@ -6,8 +6,8 @@ JavaScript — nothing here is estimated or hand-typed.
 
 ## Pages
 
-- `index.html` — All-Time Leaderboard: career totals (sortable) + the record book.
-- `season.html` — Season Explorer: pick a year, see that year's full standings (sortable).
+- `index.html` — All-Time Records: career totals (sortable) + the record book.
+- `season.html` — Stats by Season: pick a year, see that year's full standings (sortable).
 
 Both pages are behind a simple shared-password gate (`assets/auth.js`). It's
 client-side only — good enough to keep the site out of casual/search reach, not

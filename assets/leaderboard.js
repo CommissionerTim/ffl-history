@@ -4,7 +4,7 @@ import { loadAllSeasons } from './data.js';
 import { buildLeaderboard } from './calc.js';
 import { renderSortableTable } from './table.js';
 
-document.title = SITE_TITLE + ' — All-Time Leaderboard';
+document.title = SITE_TITLE + ' — All-Time Records';
 document.querySelector('#site-title').textContent = SITE_TITLE;
 
 const pct = (v) => (v === null || v === undefined ? '—' : (v * 100).toFixed(1) + '%');
@@ -43,14 +43,14 @@ function renderRecordBook(rb) {
 
   const cards = [
     {
-      label: 'Highest single-week score ever',
-      value: rb.highestSingleWeek.value !== null ? rb.highestSingleWeek.value.toFixed(2) : '—',
-      holders: holdersText(rb.highestSingleWeek.holders, true),
-    },
-    {
       label: 'Most championships',
       value: rb.mostChampionships.value ?? '—',
       holders: holdersText(rb.mostChampionships.holders, false),
+    },
+    {
+      label: 'Most Regular Season Wins',
+      value: rb.mostRegSeasonWins.value ?? '—',
+      holders: holdersText(rb.mostRegSeasonWins.holders, false),
     },
     {
       label: 'Most #1 regular-season finishes',
@@ -61,6 +61,11 @@ function renderRecordBook(rb) {
       label: 'Most last-place finishes',
       value: rb.mostLastPlace.value ?? '—',
       holders: holdersText(rb.mostLastPlace.holders, false),
+    },
+    {
+      label: 'Highest single-week score ever',
+      value: rb.highestSingleWeek.value !== null ? rb.highestSingleWeek.value.toFixed(2) : '—',
+      holders: holdersText(rb.highestSingleWeek.holders, true),
     },
     {
       label: 'Best single-season points/game',
@@ -91,23 +96,35 @@ function renderCareerTable(careers) {
       get: (r) => r.seasonsPlayed, format: (r) => String(r.seasonsPlayed),
     },
     {
-      key: 'regRecord', label: 'Reg W-L-T', numeric: true,
-      get: (r) => r.regWinPct, format: (r) => `${num(r.regW)}-${num(r.regL)}-${num(r.regT)}`,
+      key: 'regW', label: 'Reg W', numeric: true,
+      get: (r) => r.regW, format: (r) => num(r.regW),
+    },
+    {
+      key: 'regL', label: 'Reg L', numeric: true,
+      get: (r) => r.regL, format: (r) => num(r.regL),
+    },
+    {
+      key: 'regT', label: 'Reg T', numeric: true,
+      get: (r) => r.regT, format: (r) => num(r.regT),
     },
     {
       key: 'regWinPct', label: 'Reg Win%', numeric: true,
       get: (r) => r.regWinPct, format: (r) => pct(r.regWinPct),
     },
     {
-      key: 'playoffRecord', label: 'Playoff W-L', numeric: true,
-      get: (r) => r.playoffWinPct, format: (r) => `${num(r.playoffW)}-${num(r.playoffL)}`,
+      key: 'playoffW', label: 'Playoff W', numeric: true,
+      get: (r) => r.playoffW, format: (r) => num(r.playoffW),
+    },
+    {
+      key: 'playoffL', label: 'Playoff L', numeric: true,
+      get: (r) => r.playoffL, format: (r) => num(r.playoffL),
     },
     {
       key: 'playoffWinPct', label: 'Playoff Win%', numeric: true,
       get: (r) => r.playoffWinPct, format: (r) => pct(r.playoffWinPct),
     },
     {
-      key: 'careerPointsScored', label: 'Career Points', numeric: true,
+      key: 'careerPointsScored', label: 'Career Points (Reg)', numeric: true,
       get: (r) => r.careerPointsScored, format: (r) => num(r.careerPointsScored, 2),
     },
     {
@@ -131,7 +148,7 @@ function renderCareerTable(careers) {
       get: (r) => r.avgMoves, format: (r) => num(r.avgMoves, 1),
     },
   ];
-  renderSortableTable(table, careers, columns, 'manager', { key: 'manager', dir: 1 });
+  renderSortableTable(table, careers, columns, 'manager', { key: 'regW', dir: -1 });
 }
 
 main().catch((err) => {
