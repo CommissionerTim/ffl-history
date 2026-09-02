@@ -203,6 +203,48 @@ console.log('Ethan 2018 row:', ethan2018);
 const highestWeekIdx = await page.$$eval('#season-table thead th', (ths) => ths.findIndex((th) => th.textContent.includes('Highest Single Week')));
 assert(ethan2018 && ethan2018[highestWeekIdx] === '—', `2018 blank Highest Single Week renders as em-dash, not 0 (got ${ethan2018?.[highestWeekIdx]})`);
 
+// ---- hall-of-fame.html: manager names pulled live from the sheet, photo fallback ----
+await page.goto(`${baseUrl}/hall-of-fame.html`);
+const hofGateVisible = await page.$('.auth-box');
+assert(hofGateVisible === null, 'hall-of-fame.html does not re-prompt within the same session');
+
+await page.waitForSelector('.photo-card');
+const hofCards = await page.$$eval('.photo-card', (cards) =>
+  cards.map((c) => ({
+    year: c.querySelector('.photo-year')?.textContent,
+    manager: c.querySelector('.photo-manager')?.textContent,
+    missing: c.classList.contains('photo-missing'),
+  }))
+);
+console.log('Hall of Fame cards:', hofCards);
+assert(hofCards.length === 11, `Hall of Fame shows all 11 years (got ${hofCards.length})`);
+assert(hofCards[0].year === '2025' && hofCards[0].manager === 'Tim', `2025 champion is Tim (got ${hofCards[0]?.manager})`);
+assert(
+  hofCards.find((c) => c.year === '2015')?.manager === 'Marisa',
+  `2015 champion is Marisa (got ${hofCards.find((c) => c.year === '2015')?.manager})`
+);
+assert(
+  hofCards.find((c) => c.year === '2016')?.manager === 'Ethan',
+  `2016 champion is Ethan (got ${hofCards.find((c) => c.year === '2016')?.manager})`
+);
+// No real photos exist yet in this test fixture set — every card should fall back gracefully.
+await page.waitForTimeout(200);
+const allMissing = await page.$$eval('.photo-card', (cards) => cards.every((c) => c.classList.contains('photo-missing')));
+assert(allMissing, 'cards fall back to "photo coming soon" when the image 404s, instead of a broken-image icon');
+
+// ---- maid-quarters.html: empty-state message when no entries are configured ----
+await page.goto(`${baseUrl}/maid-quarters.html`);
+await page.waitForSelector('#photo-grid');
+const mqEmptyText = await page.$eval('.photo-empty', (el) => el.textContent).catch(() => null);
+assert(mqEmptyText === 'No entries yet.', `Maid Quarters shows its empty-state message (got ${mqEmptyText})`);
+
+// ---- rules.html: still gated, placeholder content for now ----
+await page.goto(`${baseUrl}/rules.html`);
+const rulesGateVisible = await page.$('.auth-box');
+assert(rulesGateVisible === null, 'rules.html does not re-prompt within the same session (still password-gated)');
+const docContentText = await page.$eval('#doc-content', (el) => el.textContent);
+assert(docContentText.includes('Coming soon'), 'rules.html shows its placeholder until the Doc is wired up');
+
 await browser.close();
 server.close();
 

@@ -8,8 +8,11 @@ JavaScript — nothing here is estimated or hand-typed.
 
 - `index.html` — All-Time Records: career totals (sortable) + the record book.
 - `season.html` — Stats by Season: pick a year, see that year's full standings (sortable).
+- `hall-of-fame.html` — one photo card per year's champion.
+- `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
+- `rules.html` — the league's custom rules, pulled live from a Google Doc.
 
-Both pages are behind a simple shared-password gate (`assets/auth.js`). It's
+All five pages are behind a simple shared-password gate (`assets/auth.js`). It's
 client-side only — good enough to keep the site out of casual/search reach, not
 real security.
 
@@ -17,7 +20,21 @@ real security.
 
 **Adding a new season:** duplicate the TEMPLATE tab in the Sheet as usual, fill
 it in, then add the year to the `YEARS` array in `config.js`. That's the only
-code change needed — both pages re-fetch the sheet on every page load.
+code change needed — every page re-fetches the sheet on every page load.
+
+**Adding a Hall of Fame / Maid Quarters entry:** drop the photo (2:3 portrait)
+into `photos/hall-of-fame/` or `photos/maid-quarters/`, named `<year>.jpg` (or
+`.png` — just match the extension), then add a line for that year to
+`photo-pages-data.js` with the team name and the photo filename. The
+manager's name is never typed there — both pages look it up live from the
+Sheet (Final Standing 1 for Hall of Fame, that year's last place for Maid
+Quarters), so it can't drift out of sync with the rest of the site. A card
+whose photo hasn't been dropped in yet just shows "Photo coming soon"
+instead of a broken image.
+
+**Editing the league rules:** just edit the Google Doc — the page re-fetches
+it live on every load, no site change needed. To point it at a different
+doc, change `RULES_DOC_ID` in `config.js`.
 
 **Changing the password:** open `hash-password.html` in a browser (don't need
 to deploy it anywhere, just open the file), type the new password, copy the
@@ -57,11 +74,9 @@ points that year (1876.12 vs. 1562.85), so Ben is credited with the 2023
 
 ## Extending the site later
 
-The header/nav in `index.html` and `season.html` is deliberately plain so you
-can drop in more static pages later (Hall of Fame, Maid Quarters, League
-Rules) and just add matching `<a href="...">` links to `nav.site-nav` — they'll
-pick up the same styling automatically. Those pages don't need any of the
-data-fetching machinery here unless you want them to.
+The header/nav is deliberately plain, repeated on every page, so you can drop
+in more static pages later and just add a matching `<a href="...">` link to
+`nav.site-nav` on every page — it'll pick up the same styling automatically.
 
 ## Local testing
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
-  <title>Stats by Season</title>
+  <title>League Rules</title>
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
@@ -12,10 +12,10 @@
     <h1 id="site-title">League Record Book</h1>
     <nav class="site-nav">
       <a href="index.html">All-Time Records</a>
-      <a href="season.html" aria-current="page">Stats by Season</a>
+      <a href="season.html">Stats by Season</a>
       <a href="hall-of-fame.html">Hall of Fame</a>
       <a href="maid-quarters.html">Maid Quarters</a>
-      <a href="rules.html">League Rules</a>
+      <a href="rules.html" aria-current="page">League Rules</a>
     </nav>
   </header>
 
@@ -23,19 +23,14 @@
     <div id="status" class="status-banner" hidden></div>
 
     <section class="panel">
-      <h2>
-        Season:
-        <select id="year-select"></select>
-      </h2>
-      <div class="table-wrap">
-        <table id="season-table"></table>
+      <div id="doc-content" class="doc-content">
+        <p>Coming soon — this page will pull the league's rules live from the Google Doc.</p>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">Data pulled live from the league's Google Sheet.</footer>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script type="module" src="assets/season.js"></script>
+  <script type="module" src="assets/rules.js"></script>
 </body>
 </html>
