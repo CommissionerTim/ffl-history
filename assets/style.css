@@ -1,0 +1,211 @@
+:root {
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --ink: #1b1d1f;
+  --muted: #6b7178;
+  --border: #e3e4e2;
+  --accent: #2f6f4f;
+  --accent-ink: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+header.site-header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+header.site-header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+nav.site-nav {
+  display: flex;
+  gap: 1rem;
+  /* Add more <a> links here later (Hall of Fame, Maid Quarters, League
+     Rules) — they'll inherit this same styling automatically. */
+}
+
+nav.site-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+nav.site-nav a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+nav.site-nav a:hover { color: var(--ink); }
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+section.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+section.panel h2 {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.record-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  background: #fbfbfa;
+}
+
+.record-card .label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.record-card .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0.15rem 0;
+}
+
+.record-card .holders {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th, td {
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  cursor: pointer;
+  user-select: none;
+  color: var(--muted);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+
+th.sorted { color: var(--ink); }
+
+td.num, th.num { text-align: right; }
+
+tbody tr:hover { background: #f2f6f3; }
+
+select#year-select {
+  font-size: 1rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.status-banner {
+  font-size: 0.9rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.status-banner.loading { background: #eef2ff; color: #3b4b8a; }
+.status-banner.error { background: #fdecea; color: #a13327; }
+
+/* Password gate */
+.auth-locked > *:not(.auth-overlay) { filter: blur(4px); pointer-events: none; }
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 24, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.auth-box {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 2rem;
+  width: min(320px, 90vw);
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+}
+
+.auth-box h1 { font-size: 1.1rem; margin: 0 0 0.35rem; }
+.auth-box p { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+
+.auth-box input {
+  width: 100%;
+  font-size: 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.auth-box button {
+  width: 100%;
+  font-size: 1rem;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+.auth-box .auth-error { color: #a13327; margin-top: 0.6rem; margin-bottom: 0; }
+
+footer.site-footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 2rem 1rem;
+}

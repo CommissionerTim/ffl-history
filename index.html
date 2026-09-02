@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>All-Time Leaderboard</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1 id="site-title">League Record Book</h1>
+    <nav class="site-nav">
+      <a href="index.html" aria-current="page">All-Time Leaderboard</a>
+      <a href="season.html">Season Explorer</a>
+    </nav>
+  </header>
+
+  <main>
+    <div id="status" class="status-banner" hidden></div>
+
+    <section class="panel">
+      <h2>Record Book</h2>
+      <div id="record-grid" class="record-grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Career Totals</h2>
+      <div class="table-wrap">
+        <table id="career-table"></table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">Data pulled live from the league's Google Sheet.</footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script type="module" src="assets/leaderboard.js"></script>
+</body>
+</html>
