@@ -238,12 +238,22 @@ await page.waitForSelector('#photo-grid');
 const mqEmptyText = await page.$eval('.photo-empty', (el) => el.textContent).catch(() => null);
 assert(mqEmptyText === 'No entries yet.', `Maid Quarters shows its empty-state message (got ${mqEmptyText})`);
 
-// ---- rules.html: still gated, placeholder content for now ----
+// ---- rules.html: still gated, embeds the live Google Doc ----
+// (docs.google.com itself isn't reachable from this sandbox, so this only
+// checks that the gate + the iframe wiring are correct, not the doc's
+// actual rendered content — that was checked separately, live, in a real
+// browser on Tim's machine before this shipped.)
 await page.goto(`${baseUrl}/rules.html`);
 const rulesGateVisible = await page.$('.auth-box');
 assert(rulesGateVisible === null, 'rules.html does not re-prompt within the same session (still password-gated)');
-const docContentText = await page.$eval('#doc-content', (el) => el.textContent);
-assert(docContentText.includes('Coming soon'), 'rules.html shows its placeholder until the Doc is wired up');
+await page.waitForSelector('iframe.doc-embed');
+const iframeSrc = await page.$eval('iframe.doc-embed', (el) => el.getAttribute('src'));
+assert(
+  iframeSrc === 'https://docs.google.com/document/d/1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI/preview',
+  `rules.html embeds the correct Doc preview URL (got ${iframeSrc})`
+);
+const fallbackHref = await page.$eval('.doc-fallback-link a', (el) => el.getAttribute('href'));
+assert(fallbackHref?.includes('1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI'), 'fallback "open doc directly" link points at the right doc');
 
 await browser.close();
 server.close();

@@ -169,23 +169,23 @@ section.panel h2 {
   font-style: italic;
 }
 
-/* League Rules */
-.doc-content {
-  line-height: 1.6;
+/* League Rules — embedded live via Google Docs' own read-only viewer, so
+   formatting (headings, bullets, bold) always matches the doc exactly. */
+.doc-embed {
+  width: 100%;
+  height: 80vh;
+  min-height: 500px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
 }
 
-.doc-content h1, .doc-content h2, .doc-content h3 {
-  margin-top: 1.4em;
-  margin-bottom: 0.4em;
+.doc-fallback-link {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
 }
 
-.doc-content h1:first-child, .doc-content h2:first-child, .doc-content h3:first-child {
-  margin-top: 0;
-}
-
-.doc-content p { margin: 0.6em 0; }
-.doc-content ul, .doc-content ol { margin: 0.6em 0; padding-left: 1.4em; }
-.doc-content a { color: var(--accent); }
+.doc-fallback-link a { color: var(--accent); }
 
 .table-wrap {
   overflow-x: auto;

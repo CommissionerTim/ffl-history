@@ -8,6 +8,11 @@ export const YEARS = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024
 
 export const SITE_TITLE = 'League Record Book';
 
+// Google Doc ID for the League Rules page (embedded live — edits to the doc
+// show up on next page load, no site change needed). Doc must be shared as
+// "Anyone with the link" can view.
+export const RULES_DOC_ID = '1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI';
+
 // SHA-256 hex digest of the shared password. Never store the real password
 // as plain text here. To change it later: open hash-password.html (not
 // linked in the site nav), type the new password, and paste the hash it
