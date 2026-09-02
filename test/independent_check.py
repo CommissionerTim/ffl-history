@@ -129,10 +129,11 @@ for _, row in careers.iterrows():
             mismatches += 1
     py_playoff = row["playoffWinPct"]
     js_playoff = js["playoffWinPct"]
-    if (py_playoff is None) != (js_playoff is None):
+    py_playoff_is_none = py_playoff is None or (isinstance(py_playoff, float) and pd.isna(py_playoff))
+    if py_playoff_is_none != (js_playoff is None):
         print(f"MISMATCH {key}.playoffWinPct: pandas={py_playoff} js={js_playoff}")
         mismatches += 1
-    elif py_playoff is not None and abs(py_playoff - js_playoff) > 1e-6:
+    elif not py_playoff_is_none and abs(py_playoff - js_playoff) > 1e-6:
         print(f"MISMATCH {key}.playoffWinPct: pandas={py_playoff} js={js_playoff}")
         mismatches += 1
 
@@ -263,6 +264,61 @@ for key, g in all_rows.groupby("ManagerKey"):
 
 print(f"\n{extra_mismatches} PA/Z-score/Luck career-best mismatches found across {len(careers)} managers.\n")
 
+print("=== NEW personal per-manager stats: pandas vs calc.js ===")
+print("(worstZScoreSeason, avgZScore, pctPlayoffSeasons, maidBowlAppearances)")
+
+# Bottom-two ("Maid Bowl") standings per year: the two largest Final
+# Standing values that year (mirrors bottomTwoStandingsForYear in calc.js).
+def bottom_two_standings(year_df):
+    distinct = sorted(year_df["Final Standing"].unique(), reverse=True)
+    return set(distinct[:2])
+
+bottom_two_by_year = {year: bottom_two_standings(g) for year, g in all_rows.groupby("Year")}
+all_rows["IsMaidBowl"] = all_rows.apply(lambda r: r["Final Standing"] in bottom_two_by_year[r["Year"]], axis=1)
+all_rows["IsPlayoffSeason"] = all_rows["Final Standing"] <= 4
+
+new_personal_mismatches = 0
+for key, g in all_rows.groupby("ManagerKey"):
+    js = js_careers.get(key)
+    if js is None:
+        continue
+
+    # Lowest single-season Z-score; ties -> earliest year.
+    r_worst_z = g.sort_values(["ZScore", "Year"], ascending=[True, True]).iloc[0]
+    js_worst_z = js["worstZScoreSeason"]
+    if js_worst_z is None or r_worst_z["Year"] != js_worst_z["year"] or abs(r_worst_z["ZScore"] - js_worst_z["value"]) > 1e-6:
+        print(f"MISMATCH {key}.worstZScoreSeason: pandas={r_worst_z[['Year','ZScore']].to_dict()} js={js_worst_z}")
+        new_personal_mismatches += 1
+
+    # All-time average Z-score.
+    py_avg_z = g["ZScore"].mean()
+    js_avg_z = js["avgZScore"]
+    if js_avg_z is None or abs(py_avg_z - js_avg_z) > 1e-6:
+        print(f"MISMATCH {key}.avgZScore: pandas={py_avg_z} js={js_avg_z}")
+        new_personal_mismatches += 1
+
+    # % of seasons finishing #1-4 ("made playoffs").
+    py_pct_playoff = g["IsPlayoffSeason"].sum() / len(g)
+    js_pct_playoff = js["pctPlayoffSeasons"]
+    if js_pct_playoff is None or abs(py_pct_playoff - js_pct_playoff) > 1e-6:
+        print(f"MISMATCH {key}.pctPlayoffSeasons: pandas={py_pct_playoff} js={js_pct_playoff}")
+        new_personal_mismatches += 1
+
+    # Maid Bowl appearances (bottom-two finishes).
+    py_maid_bowl = int(g["IsMaidBowl"].sum())
+    js_maid_bowl = js["maidBowlAppearances"]
+    if py_maid_bowl != js_maid_bowl:
+        print(f"MISMATCH {key}.maidBowlAppearances: pandas={py_maid_bowl} js={js_maid_bowl}")
+        new_personal_mismatches += 1
+
+print(f"\n{new_personal_mismatches} new-personal-stat mismatches found across {len(careers)} managers.\n")
+
+# Fold maidBowlAppearances into the pandas careers frame for the record-book
+# cross-checks below.
+maid_bowl_by_manager = all_rows.groupby("ManagerKey")["IsMaidBowl"].sum().rename("maidBowlAppearances")
+careers = careers.merge(maid_bowl_by_manager, on="ManagerKey", how="left")
+manager_display = all_rows.groupby("ManagerKey")["Manager"].agg(lambda s: s.value_counts().idxmax())
+
 print("=== 2023 regular-season-first tie check ===")
 print(all_rows[all_rows["Year"] == 2023][["Manager", "Reg Season W", "Reg Season L", "RegWinPct", "IsRegSeasonFirst"]])
 
@@ -277,3 +333,99 @@ print("Best season PPG:", all_rows.loc[best_ppg_idx][["Manager", "Year", "PPG"]]
 
 print("\n=== Record book (calc.js) ===")
 print(json.dumps(js_out["recordBook"], indent=2))
+
+print("\n=== NEW record-book stats: pandas vs calc.js (with mismatch counts) ===")
+rb_mismatches = 0
+
+def check_scalar(label, py_val, js_entry, tol=1e-6):
+    global rb_mismatches
+    js_val = js_entry["value"]
+    py_is_none = py_val is None or (isinstance(py_val, float) and pd.isna(py_val))
+    if py_is_none or js_val is None:
+        if py_is_none != (js_val is None):
+            print(f"MISMATCH {label}.value: pandas={py_val} js={js_val}")
+            rb_mismatches += 1
+        return
+    if abs(py_val - js_val) > tol:
+        print(f"MISMATCH {label}.value: pandas={py_val} js={js_val}")
+        rb_mismatches += 1
+
+def check_holders(label, py_holders, js_entry):
+    global rb_mismatches
+    js_holders = sorted(h["manager"] for h in js_entry["holders"])
+    py_holders_sorted = sorted(py_holders)
+    if py_holders_sorted != js_holders:
+        print(f"MISMATCH {label}.holders: pandas={py_holders_sorted} js={js_holders}")
+        rb_mismatches += 1
+
+# Most single-season Points Against/Game
+_v = all_rows["PAGame"].max()
+_h = all_rows.loc[(all_rows["PAGame"] - _v).abs() < 1e-6, "Manager"].tolist()
+check_scalar("mostPAGame", _v, js_out["recordBook"]["mostPAGame"])
+check_holders("mostPAGame", _h, js_out["recordBook"]["mostPAGame"])
+
+# Most career points
+_v = careers["careerPointsScored"].max()
+_h = [manager_display[k] for k in careers.loc[(careers["careerPointsScored"] - _v).abs() < 1e-6, "ManagerKey"]]
+check_scalar("mostCareerPoints", _v, js_out["recordBook"]["mostCareerPoints"])
+check_holders("mostCareerPoints", _h, js_out["recordBook"]["mostCareerPoints"])
+
+# Most wins in a single season
+_v = all_rows["Reg Season W"].max()
+_h = all_rows.loc[all_rows["Reg Season W"] == _v, "Manager"].tolist()
+check_scalar("mostWinsSeason", _v, js_out["recordBook"]["mostWinsSeason"])
+check_holders("mostWinsSeason", _h, js_out["recordBook"]["mostWinsSeason"])
+
+# Most losses in a single season
+_v = all_rows["Reg Season L"].max()
+_h = all_rows.loc[all_rows["Reg Season L"] == _v, "Manager"].tolist()
+check_scalar("mostLossesSeason", _v, js_out["recordBook"]["mostLossesSeason"])
+check_holders("mostLossesSeason", _h, js_out["recordBook"]["mostLossesSeason"])
+
+# Highest career playoff win%
+_v = careers["playoffWinPct"].max()
+_h = [manager_display[k] for k in careers.loc[(careers["playoffWinPct"] - _v).abs() < 1e-6, "ManagerKey"]]
+check_scalar("highestPlayoffWinPct", _v, js_out["recordBook"]["highestPlayoffWinPct"])
+check_holders("highestPlayoffWinPct", _h, js_out["recordBook"]["highestPlayoffWinPct"])
+
+# Most career playoff wins
+_v = careers["playoffW"].max()
+_h = [manager_display[k] for k in careers.loc[careers["playoffW"] == _v, "ManagerKey"]]
+check_scalar("mostPlayoffWins", _v, js_out["recordBook"]["mostPlayoffWins"])
+check_holders("mostPlayoffWins", _h, js_out["recordBook"]["mostPlayoffWins"])
+
+# Most championship game appearances
+_v = careers["championshipAppearances"].max()
+_h = [manager_display[k] for k in careers.loc[careers["championshipAppearances"] == _v, "ManagerKey"]]
+check_scalar("mostChampGameApp", _v, js_out["recordBook"]["mostChampGameApp"])
+check_holders("mostChampGameApp", _h, js_out["recordBook"]["mostChampGameApp"])
+
+# Most Maid Bowl appearances
+_v = careers["maidBowlAppearances"].max()
+_h = [manager_display[k] for k in careers.loc[careers["maidBowlAppearances"] == _v, "ManagerKey"]]
+check_scalar("mostMaidBowl", _v, js_out["recordBook"]["mostMaidBowl"])
+check_holders("mostMaidBowl", _h, js_out["recordBook"]["mostMaidBowl"])
+
+# Luckiest / unluckiest season ever (Luck Index, league-wide)
+_v = all_rows["LuckIndex"].max()
+_h = all_rows.loc[all_rows["LuckIndex"] == _v, "Manager"].tolist()
+check_scalar("luckiestSeasonEver", float(_v), js_out["recordBook"]["luckiestSeasonEver"])
+check_holders("luckiestSeasonEver", _h, js_out["recordBook"]["luckiestSeasonEver"])
+
+_v = all_rows["LuckIndex"].min()
+_h = all_rows.loc[all_rows["LuckIndex"] == _v, "Manager"].tolist()
+check_scalar("unluckiestSeasonEver", float(_v), js_out["recordBook"]["unluckiestSeasonEver"])
+check_holders("unluckiestSeasonEver", _h, js_out["recordBook"]["unluckiestSeasonEver"])
+
+# Best / worst single-season Z-score, league-wide
+_v = all_rows["ZScore"].max()
+_h = all_rows.loc[(all_rows["ZScore"] - _v).abs() < 1e-6, "Manager"].tolist()
+check_scalar("bestZScore", _v, js_out["recordBook"]["bestZScore"])
+check_holders("bestZScore", _h, js_out["recordBook"]["bestZScore"])
+
+_v = all_rows["ZScore"].min()
+_h = all_rows.loc[(all_rows["ZScore"] - _v).abs() < 1e-6, "Manager"].tolist()
+check_scalar("worstZScore", _v, js_out["recordBook"]["worstZScore"])
+check_holders("worstZScore", _h, js_out["recordBook"]["worstZScore"])
+
+print(f"\n{rb_mismatches} record-book mismatches found.\n")

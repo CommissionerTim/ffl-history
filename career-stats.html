@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
-  <title>Maid Quarters</title>
+  <title>Career Stats</title>
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
@@ -12,10 +12,10 @@
     <h1 id="site-title">League Record Book</h1>
     <nav class="site-nav">
       <a href="index.html">All-Time Records</a>
-      <a href="career-stats.html">Career Stats</a>
+      <a href="career-stats.html" aria-current="page">Career Stats</a>
       <a href="season.html">Season Stats</a>
       <a href="hall-of-fame.html">Hall of Fame</a>
-      <a href="maid-quarters.html" aria-current="page">Maid Quarters</a>
+      <a href="maid-quarters.html">Maid Quarters</a>
       <a href="rules.html">League Rules</a>
     </nav>
   </header>
@@ -24,13 +24,15 @@
     <div id="status" class="status-banner" hidden></div>
 
     <section class="panel">
-      <div id="photo-grid" class="photo-grid"></div>
+      <div class="table-wrap">
+        <table id="career-table"></table>
+      </div>
     </section>
   </main>
 
   <footer class="site-footer">Data pulled live from the league's Google Sheet.</footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script type="module" src="assets/maid-quarters.js"></script>
+  <script type="module" src="assets/career-stats.js"></script>
 </body>
 </html>

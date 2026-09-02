@@ -131,6 +131,19 @@ export function lastPlaceStandingForYear(yearRows) {
 }
 
 /**
+ * The two Final Standing values that make up the "Maid Bowl" (the bottom
+ * two finishers) for a given year's rows — last place and second-to-last.
+ * Works for any number of teams that year, the same way
+ * lastPlaceStandingForYear does. If a year somehow has fewer than two
+ * distinct standings, returns whatever distinct standings exist.
+ * @returns {Set<number>}
+ */
+export function bottomTwoStandingsForYear(yearRows) {
+  const distinct = [...new Set(yearRows.map((r) => r.finalStanding))].sort((a, b) => b - a);
+  return new Set(distinct.slice(0, 2));
+}
+
+/**
  * The single manager credited with the #1 regular-season finish for one
  * year's rows: best regular-season win%, ties broken by points scored that
  * year, then (still tied) alphabetically. Returns null if the year has no
@@ -249,12 +262,14 @@ export function aggregateCareers(seasons) {
   const regLeaderKeyByYear = new Map();
   const zScoreByYear = new Map(); // year -> Map<managerKey, zscore>
   const luckByYear = new Map(); // year -> Map<managerKey, luckIndex>
+  const bottomTwoByYear = new Map(); // year -> Set<finalStanding> ("Maid Bowl" standings)
   for (const { year, rows } of seasons) {
     lastPlaceByYear.set(year, rows.length ? lastPlaceStandingForYear(rows) : null);
     const leader = regSeasonLeaderForYear(rows);
     regLeaderKeyByYear.set(year, leader ? leader.managerKey : null);
     zScoreByYear.set(year, pointsScoredZScoresForYear(rows));
     luckByYear.set(year, luckIndexForYear(rows));
+    bottomTwoByYear.set(year, rows.length ? bottomTwoStandingsForYear(rows) : new Set());
   }
 
   const byKey = new Map(); // managerKey -> { nameCounts: Map, rows: [] }
@@ -297,8 +312,12 @@ export function aggregateCareers(seasons) {
     let bestSingleWeek = null; // { year, value }
     let bestPAGame = null; // { year, value } - highest points-against/game
     let bestZScoreSeason = null; // { year, value }
+    let worstZScoreSeason = null; // { year, value } - lowest single-season z-score
     let luckiestSeason = null; // { year, value } - max Luck Index
     let unluckiestSeason = null; // { year, value } - min Luck Index
+    let zScoreSum = 0, zScoreCount = 0; // for career-average z-score
+    let playoffSeasonCount = 0; // seasons finishing #1-4 ("made playoffs")
+    let maidBowlAppearances = 0; // seasons finishing in the bottom two
 
     for (const r of rows) {
       regW += r.regW; regL += r.regL; regT += r.regT;
@@ -312,6 +331,10 @@ export function aggregateCareers(seasons) {
       if (regLeaderKeyByYear.get(r.year) === managerKey) regSeasonFirsts += 1;
       standingSum += r.finalStanding;
       movesSum += r.moves;
+
+      if (r.finalStanding <= 4) playoffSeasonCount += 1;
+      const bottomTwo = bottomTwoByYear.get(r.year);
+      if (bottomTwo && bottomTwo.has(r.finalStanding)) maidBowlAppearances += 1;
 
       const winPct = regSeasonWinPct(r);
       if (winPct !== null) {
@@ -371,6 +394,18 @@ export function aggregateCareers(seasons) {
       ) {
         bestZScoreSeason = { year: r.year, value: zScore };
       }
+      if (
+        zScore !== undefined &&
+        (worstZScoreSeason === null ||
+          zScore < worstZScoreSeason.value - EPS ||
+          (Math.abs(zScore - worstZScoreSeason.value) < EPS && r.year < worstZScoreSeason.year))
+      ) {
+        worstZScoreSeason = { year: r.year, value: zScore };
+      }
+      if (zScore !== undefined) {
+        zScoreSum += zScore;
+        zScoreCount += 1;
+      }
 
       const luck = luckByYear.get(r.year)?.get(managerKey);
       if (
@@ -415,8 +450,12 @@ export function aggregateCareers(seasons) {
       bestSingleWeek,
       bestPAGame,
       bestZScoreSeason,
+      worstZScoreSeason,
+      avgZScore: zScoreCount > 0 ? zScoreSum / zScoreCount : null,
       luckiestSeason,
       unluckiestSeason,
+      pctPlayoffSeasons: playoffSeasonCount / rows.length,
+      maidBowlAppearances,
     });
   }
 
@@ -446,6 +485,15 @@ function tiedHolders(entries, valueFn) {
   return { value: best, holders };
 }
 
+/** Same as tiedHolders but finds the minimum instead of the maximum. */
+function tiedHoldersMin(entries, valueFn) {
+  const negated = tiedHolders(entries, (e) => {
+    const v = valueFn(e);
+    return v === null || v === undefined ? null : -v;
+  });
+  return { value: negated.value === null ? null : -negated.value, holders: negated.holders };
+}
+
 export function computeRecordBook(seasons, careers) {
   const allRows = seasons.flatMap((s) => s.rows);
 
@@ -464,31 +512,66 @@ export function computeRecordBook(seasons, careers) {
     .filter((r) => r.ppg !== null);
   const bestSeasonPPG = tiedHolders(ppgRows, (r) => r.ppg);
 
+  const paGameRows = allRows
+    .map((r) => ({ manager: r.manager, year: r.year, value: pointsAgainstPerGame(r) }))
+    .filter((r) => r.value !== null);
+  const mostPAGame = tiedHolders(paGameRows, (r) => r.value);
+
+  const winsRows = allRows.map((r) => ({ manager: r.manager, year: r.year, value: r.regW }));
+  const mostWinsSeason = tiedHolders(winsRows, (r) => r.value);
+
+  const lossesRows = allRows.map((r) => ({ manager: r.manager, year: r.year, value: r.regL }));
+  const mostLossesSeason = tiedHolders(lossesRows, (r) => r.value);
+
+  // Z-score and Luck Index both depend on a whole season's rows, not one
+  // row in isolation, so they're built here per year (same computation
+  // aggregateCareers does independently for its own per-manager bests).
+  const zScoreRows = [];
+  const luckRows = [];
+  for (const { year, rows } of seasons) {
+    const zScores = pointsScoredZScoresForYear(rows);
+    const luck = luckIndexForYear(rows);
+    for (const r of rows) {
+      const z = zScores.get(r.managerKey);
+      if (z !== undefined) zScoreRows.push({ manager: r.manager, year, value: z });
+      const l = luck.get(r.managerKey);
+      if (l !== undefined) luckRows.push({ manager: r.manager, year, value: l });
+    }
+  }
+  const bestZScore = tiedHolders(zScoreRows, (r) => r.value);
+  const worstZScore = tiedHoldersMin(zScoreRows, (r) => r.value);
+  const luckiestSeasonEver = tiedHolders(luckRows, (r) => r.value);
+  const unluckiestSeasonEver = tiedHoldersMin(luckRows, (r) => r.value);
+
+  const mostCareerPoints = tiedHolders(careers, (c) => c.careerPointsScored);
+  const highestPlayoffWinPct = tiedHolders(careers, (c) => c.playoffWinPct);
+  const mostPlayoffWins = tiedHolders(careers, (c) => c.playoffW);
+  const mostChampGameApp = tiedHolders(careers, (c) => c.championshipAppearances);
+  const mostMaidBowl = tiedHolders(careers, (c) => c.maidBowlAppearances);
+
+  const withYear = (r) => ({ manager: r.manager, year: r.year });
+  const noYear = (c) => ({ manager: c.manager });
+
   return {
-    highestSingleWeek: {
-      value: highestSingleWeek.value,
-      holders: highestSingleWeek.holders.map((r) => ({ manager: r.manager, year: r.year })),
-    },
-    mostChampionships: {
-      value: mostChampionships.value,
-      holders: mostChampionships.holders.map((c) => ({ manager: c.manager })),
-    },
-    mostRegSeasonWins: {
-      value: mostRegSeasonWins.value,
-      holders: mostRegSeasonWins.holders.map((c) => ({ manager: c.manager })),
-    },
-    mostRegSeasonFirsts: {
-      value: mostRegSeasonFirsts.value,
-      holders: mostRegSeasonFirsts.holders.map((c) => ({ manager: c.manager })),
-    },
-    mostLastPlace: {
-      value: mostLastPlace.value,
-      holders: mostLastPlace.holders.map((c) => ({ manager: c.manager })),
-    },
-    bestSeasonPPG: {
-      value: bestSeasonPPG.value,
-      holders: bestSeasonPPG.holders.map((r) => ({ manager: r.manager, year: r.year })),
-    },
+    highestSingleWeek: { value: highestSingleWeek.value, holders: highestSingleWeek.holders.map(withYear) },
+    mostChampionships: { value: mostChampionships.value, holders: mostChampionships.holders.map(noYear) },
+    mostRegSeasonWins: { value: mostRegSeasonWins.value, holders: mostRegSeasonWins.holders.map(noYear) },
+    mostRegSeasonFirsts: { value: mostRegSeasonFirsts.value, holders: mostRegSeasonFirsts.holders.map(noYear) },
+    mostLastPlace: { value: mostLastPlace.value, holders: mostLastPlace.holders.map(noYear) },
+    bestSeasonPPG: { value: bestSeasonPPG.value, holders: bestSeasonPPG.holders.map(withYear) },
+
+    mostPAGame: { value: mostPAGame.value, holders: mostPAGame.holders.map(withYear) },
+    mostCareerPoints: { value: mostCareerPoints.value, holders: mostCareerPoints.holders.map(noYear) },
+    mostWinsSeason: { value: mostWinsSeason.value, holders: mostWinsSeason.holders.map(withYear) },
+    mostLossesSeason: { value: mostLossesSeason.value, holders: mostLossesSeason.holders.map(withYear) },
+    highestPlayoffWinPct: { value: highestPlayoffWinPct.value, holders: highestPlayoffWinPct.holders.map(noYear) },
+    mostPlayoffWins: { value: mostPlayoffWins.value, holders: mostPlayoffWins.holders.map(noYear) },
+    mostChampGameApp: { value: mostChampGameApp.value, holders: mostChampGameApp.holders.map(noYear) },
+    mostMaidBowl: { value: mostMaidBowl.value, holders: mostMaidBowl.holders.map(noYear) },
+    luckiestSeasonEver: { value: luckiestSeasonEver.value, holders: luckiestSeasonEver.holders.map(withYear) },
+    unluckiestSeasonEver: { value: unluckiestSeasonEver.value, holders: unluckiestSeasonEver.holders.map(withYear) },
+    bestZScore: { value: bestZScore.value, holders: bestZScore.holders.map(withYear) },
+    worstZScore: { value: worstZScore.value, holders: worstZScore.holders.map(withYear) },
   };
 }
 

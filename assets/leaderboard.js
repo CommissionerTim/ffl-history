@@ -2,7 +2,6 @@ import { SHEET_ID, YEARS, PASSWORD_HASH, SITE_TITLE } from '../config.js';
 import { requireAuth } from './auth.js';
 import { loadAllSeasons } from './data.js';
 import { buildLeaderboard } from './calc.js';
-import { renderSortableTable } from './table.js';
 
 document.title = SITE_TITLE + ' — All-Time Records';
 document.querySelector('#site-title').textContent = SITE_TITLE;
@@ -36,9 +35,8 @@ async function main() {
     status.hidden = true;
   }
 
-  const { careers, recordBook } = buildLeaderboard(seasons);
+  const { recordBook } = buildLeaderboard(seasons);
   renderRecordBook(recordBook);
-  renderCareerTable(careers);
 }
 
 function renderRecordBook(rb) {
@@ -79,6 +77,66 @@ function renderRecordBook(rb) {
       value: rb.bestSeasonPPG.value !== null ? rb.bestSeasonPPG.value.toFixed(2) : '—',
       holders: holdersText(rb.bestSeasonPPG.holders, true),
     },
+    {
+      label: 'Most single-season points against/game',
+      value: rb.mostPAGame.value !== null ? rb.mostPAGame.value.toFixed(2) : '—',
+      holders: holdersText(rb.mostPAGame.holders, true),
+    },
+    {
+      label: 'Most career points',
+      value: rb.mostCareerPoints.value !== null ? num(rb.mostCareerPoints.value, 2) : '—',
+      holders: holdersText(rb.mostCareerPoints.holders, false),
+    },
+    {
+      label: 'Most wins in a single season',
+      value: rb.mostWinsSeason.value ?? '—',
+      holders: holdersText(rb.mostWinsSeason.holders, true),
+    },
+    {
+      label: 'Most losses in a single season',
+      value: rb.mostLossesSeason.value ?? '—',
+      holders: holdersText(rb.mostLossesSeason.holders, true),
+    },
+    {
+      label: 'Highest career playoff win%',
+      value: pct(rb.highestPlayoffWinPct.value),
+      holders: holdersText(rb.highestPlayoffWinPct.holders, false),
+    },
+    {
+      label: 'Most career playoff wins',
+      value: rb.mostPlayoffWins.value ?? '—',
+      holders: holdersText(rb.mostPlayoffWins.holders, false),
+    },
+    {
+      label: 'Most championship game appearances',
+      value: rb.mostChampGameApp.value ?? '—',
+      holders: holdersText(rb.mostChampGameApp.holders, false),
+    },
+    {
+      label: 'Most Maid Bowl appearances',
+      value: rb.mostMaidBowl.value ?? '—',
+      holders: holdersText(rb.mostMaidBowl.holders, false),
+    },
+    {
+      label: 'Luckiest season ever',
+      value: signedInt(rb.luckiestSeasonEver.value),
+      holders: holdersText(rb.luckiestSeasonEver.holders, true),
+    },
+    {
+      label: 'Unluckiest season ever',
+      value: signedInt(rb.unluckiestSeasonEver.value),
+      holders: holdersText(rb.unluckiestSeasonEver.holders, true),
+    },
+    {
+      label: 'Best single-season Z-score',
+      value: signedNum(rb.bestZScore.value, 2),
+      holders: holdersText(rb.bestZScore.holders, true),
+    },
+    {
+      label: 'Worst single-season Z-score',
+      value: signedNum(rb.worstZScore.value, 2),
+      holders: holdersText(rb.worstZScore.holders, true),
+    },
   ];
 
   grid.innerHTML = '';
@@ -92,117 +150,6 @@ function renderRecordBook(rb) {
     `;
     grid.appendChild(div);
   }
-}
-
-function renderCareerTable(careers) {
-  const table = document.getElementById('career-table');
-  const columns = [
-    { key: 'manager', label: 'Manager', get: (r) => r.manager, format: (r) => r.manager },
-    {
-      key: 'seasonsPlayed', label: 'Seasons', numeric: true,
-      get: (r) => r.seasonsPlayed, format: (r) => String(r.seasonsPlayed),
-    },
-    {
-      key: 'regW', label: 'Reg W', numeric: true,
-      get: (r) => r.regW, format: (r) => num(r.regW),
-    },
-    {
-      key: 'regL', label: 'Reg L', numeric: true,
-      get: (r) => r.regL, format: (r) => num(r.regL),
-    },
-    {
-      key: 'regT', label: 'Reg T', numeric: true,
-      get: (r) => r.regT, format: (r) => num(r.regT),
-    },
-    {
-      key: 'regWinPct', label: 'Reg Win%', numeric: true,
-      get: (r) => r.regWinPct, format: (r) => pct(r.regWinPct),
-    },
-    {
-      key: 'playoffW', label: 'Playoff W', numeric: true,
-      get: (r) => r.playoffW, format: (r) => num(r.playoffW),
-    },
-    {
-      key: 'playoffL', label: 'Playoff L', numeric: true,
-      get: (r) => r.playoffL, format: (r) => num(r.playoffL),
-    },
-    {
-      key: 'playoffWinPct', label: 'Playoff Win%', numeric: true,
-      get: (r) => r.playoffWinPct, format: (r) => pct(r.playoffWinPct),
-    },
-    {
-      key: 'careerPointsScored', label: 'Career Points (Reg)', numeric: true,
-      get: (r) => r.careerPointsScored, format: (r) => num(r.careerPointsScored, 2),
-    },
-    {
-      key: 'championships', label: 'Championships', numeric: true,
-      get: (r) => r.championships, format: (r) => String(r.championships),
-    },
-    {
-      key: 'championshipAppearances', label: 'Champ. Game App.', numeric: true,
-      get: (r) => r.championshipAppearances, format: (r) => String(r.championshipAppearances),
-    },
-    {
-      key: 'lastPlaceFinishes', label: 'Last-Place Finishes', numeric: true,
-      get: (r) => r.lastPlaceFinishes, format: (r) => String(r.lastPlaceFinishes),
-    },
-    {
-      key: 'avgFinalStanding', label: 'Avg Final Standing', numeric: true,
-      get: (r) => r.avgFinalStanding, format: (r) => num(r.avgFinalStanding, 2),
-    },
-    {
-      key: 'avgMoves', label: 'Avg Moves/Season', numeric: true,
-      get: (r) => r.avgMoves, format: (r) => num(r.avgMoves, 1),
-    },
-    {
-      key: 'bestRecord', label: 'Best Single-Season Record', numeric: true,
-      get: (r) => r.bestRecord ? r.bestRecord.winPct : null,
-      format: (r) => r.bestRecord
-        ? `${num(r.bestRecord.regW)}-${num(r.bestRecord.regL)}-${num(r.bestRecord.regT)} (${r.bestRecord.year})`
-        : '—',
-    },
-    {
-      key: 'worstRecord', label: 'Worst Single-Season Record', numeric: true,
-      get: (r) => r.worstRecord ? r.worstRecord.winPct : null,
-      format: (r) => r.worstRecord
-        ? `${num(r.worstRecord.regW)}-${num(r.worstRecord.regL)}-${num(r.worstRecord.regT)} (${r.worstRecord.year})`
-        : '—',
-    },
-    {
-      key: 'bestPPGSeason', label: 'Highest Scoring Season', numeric: true,
-      get: (r) => r.bestPPGSeason ? r.bestPPGSeason.ppg : null,
-      format: (r) => r.bestPPGSeason ? `${num(r.bestPPGSeason.ppg, 2)} (${r.bestPPGSeason.year})` : '—',
-    },
-    {
-      key: 'bestSingleWeek', label: 'Highest Single-Week Score', numeric: true,
-      get: (r) => r.bestSingleWeek ? r.bestSingleWeek.value : null,
-      format: (r) => r.bestSingleWeek ? `${num(r.bestSingleWeek.value, 2)} (${r.bestSingleWeek.year})` : '—',
-    },
-    {
-      key: 'bestPAGame', label: 'Highest Points-Against/Game (Season)', numeric: true,
-      get: (r) => r.bestPAGame ? r.bestPAGame.value : null,
-      format: (r) => r.bestPAGame ? `${num(r.bestPAGame.value, 2)} (${r.bestPAGame.year})` : '—',
-    },
-    {
-      key: 'bestZScoreSeason', label: 'Highest Single-Season Z-Score', numeric: true,
-      get: (r) => r.bestZScoreSeason ? r.bestZScoreSeason.value : null,
-      format: (r) => r.bestZScoreSeason ? `${signedNum(r.bestZScoreSeason.value, 2)} (${r.bestZScoreSeason.year})` : '—',
-      tooltip: "The manager's highest single-season Z-score — how many standard deviations above that season's league-average points scored they were.",
-    },
-    {
-      key: 'luckiestSeason', label: 'Luckiest Season', numeric: true,
-      get: (r) => r.luckiestSeason ? r.luckiestSeason.value : null,
-      format: (r) => r.luckiestSeason ? `${signedInt(r.luckiestSeason.value)} (${r.luckiestSeason.year})` : '—',
-      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Positive = finished better than their scoring alone would predict (lucky). This shows the manager's single luckiest season.",
-    },
-    {
-      key: 'unluckiestSeason', label: 'Unluckiest Season', numeric: true,
-      get: (r) => r.unluckiestSeason ? r.unluckiestSeason.value : null,
-      format: (r) => r.unluckiestSeason ? `${signedInt(r.unluckiestSeason.value)} (${r.unluckiestSeason.year})` : '—',
-      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Negative = finished worse than their scoring alone would predict (unlucky). This shows the manager's single unluckiest season.",
-    },
-  ];
-  renderSortableTable(table, careers, columns, 'manager', { key: 'regW', dir: -1 });
 }
 
 main().catch((err) => {

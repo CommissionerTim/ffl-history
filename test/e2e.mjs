@@ -77,9 +77,9 @@ await page.click('.auth-box button');
 await page.waitForSelector('.auth-box', { state: 'detached' });
 assert(true, 'correct password removes the gate');
 
-await page.waitForSelector('#career-table tbody tr');
-const rowCount = await page.$$eval('#career-table tbody tr', (rows) => rows.length);
-assert(rowCount === 17, `career table has 17 managers (got ${rowCount})`);
+await page.waitForSelector('.record-card');
+const noCareerTableOnIndex = await page.$('#career-table');
+assert(noCareerTableOnIndex === null, 'index.html no longer has a #career-table (it moved to career-stats.html)');
 
 const recordCards = await page.$$eval('.record-card', (cards) =>
   cards.map((c) => ({
@@ -122,9 +122,22 @@ assert(
       'Most last-place finishes',
       'Highest single-week score ever',
       'Best single-season points/game',
+      'Most single-season points against/game',
+      'Most career points',
+      'Most wins in a single season',
+      'Most losses in a single season',
+      'Highest career playoff win%',
+      'Most career playoff wins',
+      'Most championship game appearances',
+      'Most Maid Bowl appearances',
+      'Luckiest season ever',
+      'Unluckiest season ever',
+      'Best single-season Z-score',
+      'Worst single-season Z-score',
     ].join('|'),
   `record cards are in the requested order (got: ${recordCards.map((c) => c.label).join(', ')})`
 );
+assert(recordCards.length === 18, `record book has 18 cards (got ${recordCards.length})`);
 const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
 assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
 const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
@@ -134,6 +147,43 @@ assert(
   'most last-place finishes is a tie: Ethan and Kuba'
 );
 
+// New record-book cards (this round), values cross-checked against the independent pandas run.
+const cardByLabel = (label) => recordCards.find((c) => c.label === label);
+assert(cardByLabel('Most single-season points against/game')?.value === '160.68', `most PA/game = 160.68 (got ${cardByLabel('Most single-season points against/game')?.value})`);
+assert(cardByLabel('Most single-season points against/game')?.holders.includes('Ray (2025)'), 'most PA/game holder = Ray (2025)');
+assert(cardByLabel('Most career points')?.value === '17500.01', `most career points = 17500.01 (got ${cardByLabel('Most career points')?.value})`);
+assert(cardByLabel('Most career points')?.holders === 'Tim', 'most career points holder = Tim');
+assert(cardByLabel('Most wins in a single season')?.value === '12', `most wins in a season = 12 (got ${cardByLabel('Most wins in a single season')?.value})`);
+assert(cardByLabel('Most wins in a single season')?.holders.includes('Marisa (2025)'), 'most wins in a season holder = Marisa (2025)');
+assert(cardByLabel('Most losses in a single season')?.value === '11', `most losses in a season = 11 (got ${cardByLabel('Most losses in a single season')?.value})`);
+assert(
+  cardByLabel('Most losses in a single season')?.holders.includes('Eri (2025)') &&
+    cardByLabel('Most losses in a single season')?.holders.includes('Ray (2023)'),
+  'most losses in a season is a tie: Eri (2025) and Ray (2023)'
+);
+assert(cardByLabel('Highest career playoff win%')?.value === '100.0%', `highest playoff win% = 100.0% (got ${cardByLabel('Highest career playoff win%')?.value})`);
+assert(cardByLabel('Highest career playoff win%')?.holders === 'Ray', 'highest playoff win% holder = Ray');
+assert(cardByLabel('Most career playoff wins')?.value === '7', `most playoff wins = 7 (got ${cardByLabel('Most career playoff wins')?.value})`);
+assert(cardByLabel('Most career playoff wins')?.holders === 'Tim', 'most playoff wins holder = Tim');
+assert(cardByLabel('Most championship game appearances')?.value === '4', `most champ game appearances = 4 (got ${cardByLabel('Most championship game appearances')?.value})`);
+assert(
+  ['Josh', 'Marisa', 'Tim'].every((m) => cardByLabel('Most championship game appearances')?.holders.includes(m)),
+  'most champ game appearances is a 3-way tie: Josh, Marisa, Tim'
+);
+assert(cardByLabel('Most Maid Bowl appearances')?.value === '4', `most Maid Bowl appearances = 4 (got ${cardByLabel('Most Maid Bowl appearances')?.value})`);
+assert(cardByLabel('Most Maid Bowl appearances')?.holders === 'Ethan', 'most Maid Bowl appearances holder = Ethan');
+assert(cardByLabel('Luckiest season ever')?.value === '+6', `luckiest season ever = +6 (got ${cardByLabel('Luckiest season ever')?.value})`);
+assert(
+  ['Ethan (2018)', 'Ethan (2023)', 'Josh (2016)'].every((h) => cardByLabel('Luckiest season ever')?.holders.includes(h)),
+  'luckiest season ever is a 3-way tie: Ethan (2018), Ethan (2023), Josh (2016)'
+);
+assert(cardByLabel('Unluckiest season ever')?.value === '-7', `unluckiest season ever = -7 (got ${cardByLabel('Unluckiest season ever')?.value})`);
+assert(cardByLabel('Unluckiest season ever')?.holders.includes('Carter (2016)'), 'unluckiest season ever holder = Carter (2016)');
+assert(cardByLabel('Best single-season Z-score')?.value === '+2.02', `best single-season z-score = +2.02 (got ${cardByLabel('Best single-season Z-score')?.value})`);
+assert(cardByLabel('Best single-season Z-score')?.holders.includes('Tim (2025)'), 'best single-season z-score holder = Tim (2025)');
+assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst single-season z-score = -2.00 (got ${cardByLabel('Worst single-season Z-score')?.value})`);
+assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
+
 // Column header lookup helper (index-agnostic — survives future column reordering).
 async function headerIndex(tableSelector, matchText, excludeText) {
   return page.$$eval(
@@ -142,6 +192,25 @@ async function headerIndex(tableSelector, matchText, excludeText) {
     { matchText, excludeText }
   );
 }
+
+// Page titles / nav labels reflect the renamed pages.
+assert((await page.title()).includes('All-Time Records'), 'index.html title includes "All-Time Records"');
+const navText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
+assert(
+  navText.includes('All-Time Records') && navText.includes('Career Stats') && navText.includes('Season Stats'),
+  `nav shows renamed labels including Career Stats (got ${navText})`
+);
+assert(navText.length === 6, `nav has 6 links (got ${navText.length})`);
+
+// ---- career-stats.html: the career totals table lives here now ----
+await page.goto(`${baseUrl}/career-stats.html`);
+const careerStatsGateVisible = await page.$('.auth-box');
+assert(careerStatsGateVisible === null, 'career-stats.html does not re-prompt within the same session');
+assert((await page.title()).includes('Career Stats'), 'career-stats.html title includes "Career Stats"');
+
+await page.waitForSelector('#career-table tbody tr');
+const rowCount = await page.$$eval('#career-table tbody tr', (rows) => rows.length);
+assert(rowCount === 17, `career table has 17 managers (got ${rowCount})`);
 
 // Default sort (no header clicked yet) should be Reg W descending -> Marisa (80) on top.
 const topManagerByDefault = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
@@ -197,9 +266,25 @@ const marisaCareerRow = await page.$$eval('#career-table tbody tr', (rows) => {
 assert(marisaCareerRow && marisaCareerRow[luckiestIndex] === '+5 (2015)', `Marisa luckiest season = +5 (2015) (got ${marisaCareerRow?.[luckiestIndex]})`);
 assert(marisaCareerRow && marisaCareerRow[unluckiestIndex] === '-4 (2021)', `Marisa unluckiest season = -4 (2021) (got ${marisaCareerRow?.[unluckiestIndex]})`);
 
-// Hover-tooltip icons: Z-score, Luckiest Season, Unluckiest Season on the career table.
+// NEW career-stats columns (this round): % of Playoff Seasons, Lowest Single-Season
+// Z-Score, All-Time Average Z-Score — cross-checked against the independent pandas run.
+const pctPlayoffIndex = await headerIndex('#career-table', '% of Playoff Seasons');
+const worstZScoreIndex = await headerIndex('#career-table', 'Lowest Single-Season Z-Score');
+const avgZScoreIndex = await headerIndex('#career-table', 'All-Time Average Z-Score');
+assert(pctPlayoffIndex !== -1, '"% of Playoff Seasons" column header exists, next to Playoff Win%');
+assert(pctPlayoffIndex === (await headerIndex('#career-table', 'Playoff Win%')) + 1, '"% of Playoff Seasons" column sits immediately after "Playoff Win%"');
+assert(worstZScoreIndex === bestZScoreIndex + 1, '"Lowest Single-Season Z-Score" column sits immediately after "Highest Single-Season Z-Score"');
+assert(avgZScoreIndex === worstZScoreIndex + 1, '"All-Time Average Z-Score" column sits immediately after "Lowest Single-Season Z-Score"');
+assert(timRow && timRow[pctPlayoffIndex] === '72.7%', `Tim % of playoff seasons = 72.7% (got ${timRow?.[pctPlayoffIndex]})`);
+assert(timRow && timRow[worstZScoreIndex] === '-1.18 (2024)', `Tim lowest single-season z-score = -1.18 (2024) (got ${timRow?.[worstZScoreIndex]})`);
+assert(timRow && timRow[avgZScoreIndex] === '+0.74', `Tim all-time average z-score = +0.74 (got ${timRow?.[avgZScoreIndex]})`);
+assert(carterRow && carterRow[pctPlayoffIndex] === '0.0%', `Carter % of playoff seasons = 0.0% (got ${carterRow?.[pctPlayoffIndex]})`);
+assert(carterRow && carterRow[worstZScoreIndex] === '-0.44 (2017)', `Carter lowest single-season z-score = -0.44 (2017) (got ${carterRow?.[worstZScoreIndex]})`);
+assert(carterRow && carterRow[avgZScoreIndex] === '+0.06', `Carter all-time average z-score = +0.06 (got ${carterRow?.[avgZScoreIndex]})`);
+
+// Hover-tooltip icons: Z-score (best+worst), Luckiest/Unluckiest, avg Z-score, % Playoff Seasons.
 const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.title));
-assert(careerTooltips.length === 3, `career table has 3 tooltip icons: z-score, luckiest, unluckiest (got ${careerTooltips.length})`);
+assert(careerTooltips.length === 6, `career table has 6 tooltip icons (got ${careerTooltips.length})`);
 assert(careerTooltips.every((t) => t.length > 20), 'career table tooltips carry real explainer text, not empty strings');
 
 // Sorting: click "Championships" header, confirm Tim (3) sorts to top in descending order.
@@ -207,11 +292,6 @@ await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // asce
 await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // then descending
 const topManagerAfterSort = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
 assert(topManagerAfterSort === 'Tim', `sorting by Championships desc puts Tim first (got ${topManagerAfterSort})`);
-
-// Page titles / nav labels reflect the renamed pages.
-assert((await page.title()).includes('All-Time Records'), 'index.html title includes "All-Time Records"');
-const navText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
-assert(navText.includes('All-Time Records') && navText.includes('Season Stats'), `nav shows renamed labels (got ${navText})`);
 
 // ---- season.html: gate should already be unlocked (same session) ----
 await page.goto(`${baseUrl}/season.html`);

@@ -6,14 +6,18 @@ JavaScript — nothing here is estimated or hand-typed.
 
 ## Pages
 
-- `index.html` — All-Time Records: career totals (sortable) + the record book.
-  The career table's columns include each manager's personal single-season
-  bests/worsts: Best/Worst Single-Season Record (by regular-season win%),
-  Highest Scoring Season (best single-season points/game), Highest
-  Single-Week Score, Highest Points-Against/Game, Highest Single-Season
-  Z-Score, and Luckiest/Unluckiest Season (see "Advanced stats" below). A
-  manager with no recorded weekly high in any season shows "—" there,
-  never "0.00".
+- `index.html` — All-Time Records: the record book only (18 cards, one
+  extreme/leader stat per card, ties shown as multiple holders). See
+  "Advanced stats" below for how the Z-score/luck/playoff-driven cards
+  are computed.
+- `career-stats.html` — Career Stats: the full sortable career-totals table.
+  Columns include each manager's personal single-season bests/worsts:
+  Best/Worst Single-Season Record (by regular-season win%), Highest Scoring
+  Season (best single-season points/game), Highest Single-Week Score,
+  Highest Points-Against/Game, Highest/Lowest Single-Season Z-Score,
+  All-Time Average Z-Score, % of Playoff Seasons, and Luckiest/Unluckiest
+  Season (see "Advanced stats" below). A manager with no recorded weekly
+  high in any season shows "—" there, never "0.00".
 - `season.html` — Season Stats: pick a year, see that year's full standings
   (sortable), including Z-score, Pythagorean win expectation, and win%
   over/under Pythagorean expectation for that season (see "Advanced stats").
@@ -21,7 +25,7 @@ JavaScript — nothing here is estimated or hand-typed.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
 - `rules.html` — the league's custom rules, pulled live from a Google Doc.
 
-All five pages are behind a simple shared-password gate (`assets/auth.js`). It's
+All six pages are behind a simple shared-password gate (`assets/auth.js`). It's
 client-side only — good enough to keep the site out of casual/search reach, not
 real security.
 
@@ -81,7 +85,7 @@ In the 2023 season, Ethan and Ben tied exactly at 9-4. Ben scored more
 points that year (1876.12 vs. 1562.85), so Ben is credited with the 2023
 #1 regular-season finish.
 
-### Advanced stats (Season Stats + career-table columns)
+### Advanced stats (Season Stats + Career Stats columns + record book)
 
 Each has a hover "ⓘ" next to its column header on the site itself with a
 plain-language explainer; here's the exact math:
@@ -97,18 +101,37 @@ plain-language explainer; here's the exact math:
 - **Z-score (points scored)** — how many standard deviations above or below
   that *season's own* league mean a manager's points scored were, using the
   population standard deviation (a season's rows are the whole league that
-  year, not a sample of it). 0 = exactly average.
+  year, not a sample of it). 0 = exactly average. Career Stats shows each
+  manager's best (highest) and worst (lowest) single-season Z-score, plus
+  their All-Time Average Z-Score (the mean of their own single-season
+  Z-scores across every season played). The record book separately tracks
+  the single best and worst Z-score *anyone* has ever posted, league-wide.
 - **Luck Index** — `Points Scored Rank (that season) − Final Standing (that
   season)`, where Points Scored Rank is 1 for the most points scored that
   year. Positive = finished better than their scoring alone would predict
   (lucky); negative = finished worse (unlucky). "Luckiest/Unluckiest Season"
-  on the career table is each manager's single best/worst Luck Index, with
-  the year it happened.
+  on Career Stats is each manager's single best/worst Luck Index, with the
+  year it happened; the record book's "Luckiest/Unluckiest season ever"
+  cards are the same, league-wide.
+- **% of Playoff Seasons** — the percentage of a manager's seasons in which
+  they finished #1-4 in the final standings ("made the playoffs"). Uses
+  Final Standing directly, unlike the "#1 regular-season finish" judgment
+  call described above.
+- **Maid Bowl appearances** — how many of a manager's seasons ended with
+  them in the bottom two of the final standings (last place or
+  second-to-last that year, whatever the league size was that season). See
+  `bottomTwoStandingsForYear` in `calc.js`.
 
-All four are cross-checked at the individual manager-season level (not just
-in aggregate) against an independent pandas recomputation in
+All of the above are cross-checked at the individual manager-season level
+(not just in aggregate) against an independent pandas recomputation in
 `test/independent_check.py` — 0 mismatches across every manager-year before
-this shipped.
+this shipped. The 18 record-book cards on `index.html` (6 original + 12
+added this round: Most Single-Season Points Against/Game, Most Career
+Points, Most Wins/Losses in a Single Season, Highest Career Playoff Win%,
+Most Career Playoff Wins, Most Championship Game Appearances, Most Maid
+Bowl Appearances, Luckiest/Unluckiest Season Ever, and Best/Worst
+Single-Season Z-Score) are likewise cross-checked, value and holder(s),
+against the same pandas recomputation.
 
 ## Extending the site later
 
