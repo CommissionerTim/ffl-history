@@ -213,6 +213,7 @@ const hofCards = await page.$$eval('.photo-card', (cards) =>
   cards.map((c) => ({
     year: c.querySelector('.photo-year')?.textContent,
     manager: c.querySelector('.photo-manager')?.textContent,
+    team: c.querySelector('.photo-team')?.textContent,
     missing: c.classList.contains('photo-missing'),
   }))
 );
@@ -227,16 +228,32 @@ assert(
   hofCards.find((c) => c.year === '2016')?.manager === 'Ethan',
   `2016 champion is Ethan (got ${hofCards.find((c) => c.year === '2016')?.manager})`
 );
-// No real photos exist yet in this test fixture set — every card should fall back gracefully.
+// Team names come from photo-pages-data.js (parsed from each photo's filename), shown alongside the manager.
+assert(hofCards[0].team === 'maidbait', `2025 team name is "maidbait" (got ${hofCards[0].team})`);
+assert(
+  hofCards.find((c) => c.year === '2015')?.team === 'Waiver Wired',
+  `2015 team name is "Waiver Wired" (got ${hofCards.find((c) => c.year === '2015')?.team})`
+);
+// No real photos exist in this test fixture set — every card should fall back gracefully.
 await page.waitForTimeout(200);
 const allMissing = await page.$$eval('.photo-card', (cards) => cards.every((c) => c.classList.contains('photo-missing')));
 assert(allMissing, 'cards fall back to "photo coming soon" when the image 404s, instead of a broken-image icon');
 
-// ---- maid-quarters.html: empty-state message when no entries are configured ----
+// ---- maid-quarters.html: entries render with year + manager, no team name ----
 await page.goto(`${baseUrl}/maid-quarters.html`);
-await page.waitForSelector('#photo-grid');
-const mqEmptyText = await page.$eval('.photo-empty', (el) => el.textContent).catch(() => null);
-assert(mqEmptyText === 'No entries yet.', `Maid Quarters shows its empty-state message (got ${mqEmptyText})`);
+await page.waitForSelector('.photo-card');
+const mqCards = await page.$$eval('.photo-card', (cards) =>
+  cards.map((c) => ({
+    year: c.querySelector('.photo-year')?.textContent,
+    manager: c.querySelector('.photo-manager')?.textContent,
+    hasTeam: !!c.querySelector('.photo-team'),
+  }))
+);
+console.log('Maid Quarters cards:', mqCards);
+assert(mqCards.length === 8, `Maid Quarters shows all 8 configured years (got ${mqCards.length})`);
+assert(mqCards.every((c) => !c.hasTeam), 'Maid Quarters cards never render a team-name line');
+assert(mqCards[0].year === '2025', `Maid Quarters sorts newest first (got ${mqCards[0]?.year})`);
+assert(mqCards.every((c) => c.manager && c.manager !== '—'), 'every Maid Quarters card resolves a manager name from the sheet');
 
 // ---- rules.html: still gated, embeds the live Google Doc ----
 // (docs.google.com itself isn't reachable from this sandbox, so this only

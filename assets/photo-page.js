@@ -17,6 +17,7 @@ import { loadAllSeasons } from './data.js';
  * @param {string} opts.gridId
  * @param {string} opts.statusId
  * @param {string} opts.emptyMessage - shown when `entries` is empty
+ * @param {boolean} [opts.showTeamName] - defaults to true; set false to omit the team-name line (e.g. Maid Quarters)
  */
 export async function initPhotoPage(opts) {
   await requireAuth(opts.passwordHash);
@@ -51,14 +52,16 @@ export async function initPhotoPage(opts) {
     return;
   }
 
+  const showTeamName = opts.showTeamName !== false;
+
   for (const entry of sortedEntries) {
     const rows = seasonsByYear.get(entry.year);
     const row = rows ? opts.selectRow(rows) : null;
-    grid.appendChild(buildCard(entry, row, opts.photoDir));
+    grid.appendChild(buildCard(entry, row, opts.photoDir, showTeamName));
   }
 }
 
-function buildCard(entry, row, photoDir) {
+function buildCard(entry, row, photoDir, showTeamName) {
   const managerName = row ? row.manager : null;
 
   const card = document.createElement('div');
@@ -68,7 +71,7 @@ function buildCard(entry, row, photoDir) {
   frame.className = 'photo-frame';
 
   const img = document.createElement('img');
-  img.src = `${photoDir}/${entry.photo}`;
+  img.src = `${photoDir}/${encodeURIComponent(entry.photo)}`;
   img.alt = managerName ? `${managerName} — ${entry.year}` : `${entry.year}`;
   img.loading = 'lazy';
 
@@ -95,13 +98,16 @@ function buildCard(entry, row, photoDir) {
   managerEl.className = 'photo-manager';
   managerEl.textContent = managerName || '—';
 
-  const teamEl = document.createElement('div');
-  teamEl.className = 'photo-team';
-  teamEl.textContent = entry.teamName || '';
-
   caption.appendChild(yearEl);
   caption.appendChild(managerEl);
-  caption.appendChild(teamEl);
+
+  if (showTeamName && entry.teamName) {
+    const teamEl = document.createElement('div');
+    teamEl.className = 'photo-team';
+    teamEl.textContent = entry.teamName;
+    caption.appendChild(teamEl);
+  }
+
   card.appendChild(caption);
 
   return card;

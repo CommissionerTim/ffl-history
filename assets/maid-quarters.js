@@ -20,6 +20,7 @@ initPhotoPage({
   gridId: 'photo-grid',
   statusId: 'status',
   emptyMessage: 'No entries yet.',
+  showTeamName: false,
 }).catch((err) => {
   const status = document.getElementById('status');
   status.hidden = false;
