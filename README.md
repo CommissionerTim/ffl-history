@@ -7,7 +7,7 @@ JavaScript — nothing here is estimated or hand-typed.
 ## Pages
 
 - `index.html` — All-Time Records: career totals (sortable) + the record book.
-- `season.html` — Stats by Season: pick a year, see that year's full standings (sortable).
+- `season.html` — Season Stats: pick a year, see that year's full standings (sortable).
 - `hall-of-fame.html` — one photo card per year's champion.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
 - `rules.html` — the league's custom rules, pulled live from a Google Doc.

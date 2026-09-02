@@ -4,7 +4,7 @@ import { loadAllSeasons } from './data.js';
 import { regSeasonWinPct, playoffWinPct, pointsPerGame } from './calc.js';
 import { renderSortableTable } from './table.js';
 
-document.title = SITE_TITLE + ' — Stats by Season';
+document.title = SITE_TITLE + ' — Season Stats';
 document.querySelector('#site-title').textContent = SITE_TITLE;
 
 const pct = (v) => (v === null || v === undefined ? '—' : (v * 100).toFixed(1) + '%');

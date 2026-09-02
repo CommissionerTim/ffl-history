@@ -72,7 +72,7 @@ await page.click('.auth-box button');
 await page.waitForSelector('.auth-error:not([hidden])');
 assert(true, 'wrong password shows an error and does not unlock');
 
-await page.fill('.auth-box input[type=password]', 'f00tball');
+await page.fill('.auth-box input[type=password]', 'corrupt');
 await page.click('.auth-box button');
 await page.waitForSelector('.auth-box', { state: 'detached' });
 assert(true, 'correct password removes the gate');
@@ -172,14 +172,14 @@ assert(topManagerAfterSort === 'Tim', `sorting by Championships desc puts Tim fi
 // Page titles / nav labels reflect the renamed pages.
 assert((await page.title()).includes('All-Time Records'), 'index.html title includes "All-Time Records"');
 const navText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
-assert(navText.includes('All-Time Records') && navText.includes('Stats by Season'), `nav shows renamed labels (got ${navText})`);
+assert(navText.includes('All-Time Records') && navText.includes('Season Stats'), `nav shows renamed labels (got ${navText})`);
 
 // ---- season.html: gate should already be unlocked (same session) ----
 await page.goto(`${baseUrl}/season.html`);
 const gateVisible = await page.$('.auth-box');
 assert(gateVisible === null, 'season.html does not re-prompt within the same session');
 
-assert((await page.title()).includes('Stats by Season'), 'season.html title includes "Stats by Season"');
+assert((await page.title()).includes('Season Stats'), 'season.html title includes "Season Stats"');
 
 await page.waitForSelector('#season-table tbody tr');
 const selectedYear = await page.$eval('#year-select', (el) => el.value);

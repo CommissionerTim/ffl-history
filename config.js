@@ -17,4 +17,4 @@ export const RULES_DOC_ID = '1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI';
 // as plain text here. To change it later: open hash-password.html (not
 // linked in the site nav), type the new password, and paste the hash it
 // gives you below.
-export const PASSWORD_HASH = 'ae481ee5d9238dc18d93dfec8b9813eff88d7d603e8c3c28c552048cf1314d69';
+export const PASSWORD_HASH = '11d510e067d2cdcd7559bd86d27a2f4c20babd43670346b97af99b522c1f0075';
