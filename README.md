@@ -60,17 +60,34 @@ Holder" (e.g. "Most drinks consumed at the draft" / "3" / "Tim"). It shows
 up as its own card on the All-Time Records page after the next page load,
 appended after the computed cards, in the exact same visual format — no
 site change needed. "Record Value" doesn't have to be a number ("Best trade
-nickname" / "The Sheep-for-a-Kicker Trade" / "Josh" works fine). "Record
-Value" and "Record Holder" can each be left blank independently (a blank
-one just shows "—" on the card) — handy for a record whose real content
-belongs in the other column, e.g. "Farthest Draft from L.A." / *(blank)* /
-"Cabo San Lucas, Mexico (2025)". Only "Record Name" is required — a row
-missing it is skipped rather than shown as a broken card. Unlike everything
-else on this site, these values are never computed or cross-checked —
-they're exactly what's typed into the sheet. If the tab gets renamed or
-deleted, the page just quietly stops showing those cards (check the browser
-console for the fetch error) rather than breaking; to rename the tab,
+nickname" / "The Sheep-for-a-Kicker Trade" / "Josh" works fine, as does
+"920 Miles" or "6th Round"). "Record Value" and "Record Holder" can each be
+left blank independently (a blank one just shows "—" on the card) — handy
+for a record whose real content belongs in the other column. Only "Record
+Name" is required — a row missing it is skipped rather than shown as a
+broken card. Unlike everything else on this site, these values are never
+computed or cross-checked — they're exactly what's typed into the sheet.
+If the tab gets renamed or deleted, the page just quietly stops showing
+those cards (check the browser console for the fetch error) rather than
+breaking; to rename the tab,
 update `OTHER_RECORDS_TAB` in `config.js` to match.
+
+**Important — keep "Record Value" formatted as Plain Text:** the "Record
+Value" column on the "Other Records" tab must have its number format set to
+Plain Text (select the column → Format → Number → Plain text in Google
+Sheets). This is already set up, so you shouldn't need to touch it — it's
+documented here so it stays set if the tab ever gets rebuilt. Without it,
+Google's live-CSV export can silently blank out any non-numeric entry in
+that column (e.g. "6th Round") the moment the column also contains plain
+numbers (e.g. "3") — Sheets' export picks one type for the whole column
+based on the mix of values and drops anything that doesn't fit, before the
+site ever sees it. This bit the site once already: two real entries ("920
+Miles" and "6th Round") were showing up blank on the live page until the
+column was set to Plain Text and the values re-saved. Text-formatting the
+column sidesteps the issue entirely — plain numbers still display and sort
+fine as text on this page, since "Record Value" is never treated as a
+number anywhere in the code (see `normalizeOtherRecordsRows` in
+`calc.js`).
 
 **Changing the password:** open `hash-password.html` in a browser (don't need
 to deploy it anywhere, just open the file), type the new password, copy the
