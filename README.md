@@ -12,7 +12,10 @@ computed, never estimated or hand-typed.
   extreme/leader stat per card, ties shown as multiple holders — see
   "Advanced stats" below for how the Z-score/luck/playoff-driven ones are
   computed), plus any freeform cards from the sheet's "Other Records" tab
-  appended after them in the same format (see "Day-to-day maintenance").
+  appended after them in the same format (see "Day-to-day maintenance"). The
+  4 cards whose stat also appears as a column on Career/Season Stats
+  (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score) carry
+  the same hover "ⓘ" explainer as that column.
 - `career-stats.html` — Career Stats: the full sortable career-totals table.
   A toggle above the table switches between "All Managers" (every manager
   who's ever played, the default) and "Active Managers" (only whoever has a
@@ -132,8 +135,10 @@ points that year (1876.12 vs. 1562.85), so Ben is credited with the 2023
 
 ### Advanced stats (Season Stats + Career Stats columns + record book)
 
-Each has a hover "ⓘ" next to its column header on the site itself with a
-plain-language explainer; here's the exact math:
+Each has a hover "ⓘ" on the site itself (next to the column header on
+Season/Career Stats, next to the card label on the record book, where that
+stat is also shown there) with a plain-language explainer; here's the exact
+math:
 
 - **Pythagorean win expectation** — `PF^6.1 / (PF^6.1 + PA^6.1)`, the win% a
   record "should" be based only on points scored (PF) vs. points allowed

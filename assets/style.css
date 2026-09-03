@@ -275,15 +275,51 @@ th.sorted { color: var(--ink); }
   background: #f2f6f3; /* match the row-hover background so the frozen cell doesn't look out of place */
 }
 
+/* Info ("ⓘ") icons: on column headers (Season/Career Stats) and on
+   All-Time Records cards (see makeInfoIcon in table.js, used by both). A
+   plain `title` attribute tooltip can't be resized or restyled, so this
+   builds its own hover/focus popup via data-tooltip + ::after instead --
+   letting it be a size that's actually comfortable to read. */
 .th-info {
   display: inline-block;
   margin-left: 0.3em;
   cursor: help;
   color: var(--muted);
   font-weight: 400;
+  position: relative;
 }
 
-.th-info:hover { color: var(--accent); }
+.th-info:hover, .th-info:focus { color: var(--accent); outline: none; }
+
+.th-info::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(340px, 85vw);
+  white-space: normal;
+  text-align: left;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.th-info:hover::after, .th-info:focus::after {
+  opacity: 1;
+  visibility: visible;
+}
 
 td.num, th.num { text-align: right; }
 

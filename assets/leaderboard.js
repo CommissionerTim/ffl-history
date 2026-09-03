@@ -2,6 +2,7 @@ import { SHEET_ID, YEARS, OTHER_RECORDS_TAB, PASSWORD_HASH, SITE_TITLE } from '.
 import { requireAuth } from './auth.js';
 import { loadAllSeasons, loadOtherRecords } from './data.js';
 import { buildLeaderboard } from './calc.js';
+import { makeInfoIcon } from './table.js';
 
 document.title = SITE_TITLE + ' — All-Time Records';
 document.querySelector('#site-title').textContent = SITE_TITLE;
@@ -134,21 +135,25 @@ function computedRecordCards(rb) {
       label: 'Luckiest season ever',
       value: signedInt(rb.luckiestSeasonEver.value),
       holders: holdersText(rb.luckiestSeasonEver.holders, true),
+      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Positive = finished better than their scoring alone would predict (lucky). This is the single luckiest season anyone has ever had.",
     },
     {
       label: 'Unluckiest season ever',
       value: signedInt(rb.unluckiestSeasonEver.value),
       holders: holdersText(rb.unluckiestSeasonEver.holders, true),
+      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Negative = finished worse than their scoring alone would predict (unlucky). This is the single unluckiest season anyone has ever had.",
     },
     {
       label: 'Best single-season Z-score',
       value: signedNum(rb.bestZScore.value, 2),
       holders: holdersText(rb.bestZScore.holders, true),
+      tooltip: "The single highest Z-score anyone has ever posted in a season — how many standard deviations above that season's league-average points scored they were.",
     },
     {
       label: 'Worst single-season Z-score',
       value: signedNum(rb.worstZScore.value, 2),
       holders: holdersText(rb.worstZScore.holders, true),
+      tooltip: "The single lowest Z-score anyone has ever posted in a season — how many standard deviations below that season's league-average points scored they were.",
     },
   ];
 }
@@ -166,11 +171,21 @@ function appendRecordCards(grid, cards) {
   for (const c of cards) {
     const div = document.createElement('div');
     div.className = 'record-card';
-    div.innerHTML = `
-      <div class="label">${c.label}</div>
-      <div class="value">${c.value || '—'}</div>
-      <div class="holders">${c.holders || '—'}</div>
-    `;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.appendChild(document.createTextNode(c.label));
+    if (c.tooltip) label.appendChild(makeInfoIcon(c.tooltip));
+
+    const value = document.createElement('div');
+    value.className = 'value';
+    value.textContent = c.value || '—';
+
+    const holders = document.createElement('div');
+    holders.className = 'holders';
+    holders.textContent = c.holders || '—';
+
+    div.append(label, value, holders);
     grid.appendChild(div);
   }
 }

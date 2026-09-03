@@ -82,11 +82,20 @@ const noCareerTableOnIndex = await page.$('#career-table');
 assert(noCareerTableOnIndex === null, 'index.html no longer has a #career-table (it moved to career-stats.html)');
 
 const recordCards = await page.$$eval('.record-card', (cards) =>
-  cards.map((c) => ({
-    label: c.querySelector('.label').textContent,
-    value: c.querySelector('.value').textContent,
-    holders: c.querySelector('.holders').textContent,
-  }))
+  cards.map((c) => {
+    const labelEl = c.querySelector('.label');
+    const infoEl = labelEl.querySelector('.th-info');
+    // The label div's first child is always the plain label text node --
+    // a tooltip icon (if any) is a separate <span> appended after it, so
+    // this excludes the icon glyph ("ⓘ") from the label text itself.
+    const label = (labelEl.childNodes[0]?.nodeValue ?? labelEl.textContent).trim();
+    return {
+      label,
+      value: c.querySelector('.value').textContent,
+      holders: c.querySelector('.holders').textContent,
+      tooltip: infoEl ? infoEl.dataset.tooltip : null,
+    };
+  })
 );
 console.log(recordCards);
 assert(
@@ -196,6 +205,24 @@ assert(cardByLabel('Best single-season Z-score')?.value === '+2.02', `best singl
 assert(cardByLabel('Best single-season Z-score')?.holders.includes('Tim (2025)'), 'best single-season z-score holder = Tim (2025)');
 assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst single-season z-score = -2.00 (got ${cardByLabel('Worst single-season Z-score')?.value})`);
 assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
+
+// The 4 record-book cards whose stat also has a hover tooltip on Career/Season
+// Stats (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score)
+// carry the same kind of "ⓘ" tooltip here, with real explainer text.
+for (const label of ['Luckiest season ever', 'Unluckiest season ever', 'Best single-season Z-score', 'Worst single-season Z-score']) {
+  const tooltip = cardByLabel(label)?.tooltip;
+  assert(typeof tooltip === 'string' && tooltip.length > 20, `"${label}" card has a real tooltip (got ${JSON.stringify(tooltip)})`);
+}
+// Cards with no Career/Season Stats equivalent (e.g. a plain count) don't get one.
+assert(cardByLabel('Most championships')?.tooltip == null, '"Most championships" card has no tooltip icon (no Career Stats equivalent needs explaining)');
+// The tooltip icon uses the shared custom popup (data-tooltip via CSS ::after), not
+// a native `title` attribute -- which is what lets it be sized larger than default.
+const luckiestInfoIcon = await page.$('.record-card .th-info');
+assert(luckiestInfoIcon !== null, 'a tooltip icon element exists on the All-Time Records page');
+const iconHasNoNativeTitle = await page.$eval('.record-card .th-info', (el) => el.getAttribute('title') === null);
+assert(iconHasNoNativeTitle, 'tooltip icon has no native title attribute (uses the custom, resizable popup instead)');
+const tooltipMaxWidth = await page.$eval('.record-card .th-info', (el) => getComputedStyle(el, '::after').maxWidth);
+assert(tooltipMaxWidth && tooltipMaxWidth !== 'none', `tooltip popup has an explicit max-width so it renders as a real text box (got ${tooltipMaxWidth})`);
 
 // "Other Records" tab: freeform, hand-entered cards rendered in the exact same card format.
 assert(cardByLabel('Most Times Slept Through Draft')?.value === '1', `other-record value passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.value})`);
@@ -321,7 +348,7 @@ assert(carterRow && carterRow[worstZScoreIndex] === '-0.44 (2017)', `Carter lowe
 assert(carterRow && carterRow[avgZScoreIndex] === '+0.06', `Carter all-time average z-score = +0.06 (got ${carterRow?.[avgZScoreIndex]})`);
 
 // Hover-tooltip icons: Z-score (best+worst), Luckiest/Unluckiest, avg Z-score, % Playoff Seasons.
-const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.title));
+const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));
 assert(careerTooltips.length === 6, `career table has 6 tooltip icons (got ${careerTooltips.length})`);
 assert(careerTooltips.every((t) => t.length > 20), 'career table tooltips carry real explainer text, not empty strings');
 
@@ -428,7 +455,7 @@ assert(timRow2025 && timRow2025[pythagIdx] === '67.1%', `Tim 2025 Pythagorean wi
 assert(timRow2025 && timRow2025[overUnderIdx] === '+9.8%', `Tim 2025 win% over/under Pythagorean = +9.8% (got ${timRow2025?.[overUnderIdx]})`);
 
 // Hover-tooltip icons exist with real plain-language explainer text.
-const seasonTooltips = await page.$$eval('#season-table thead .th-info', (els) => els.map((el) => el.title));
+const seasonTooltips = await page.$$eval('#season-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));
 assert(seasonTooltips.length === 3, `season table has 3 tooltip icons: Z-score, Pythagorean win%, win% +/- Pythagorean (got ${seasonTooltips.length})`);
 assert(seasonTooltips.every((t) => t.length > 20), 'season table tooltips carry real explainer text, not empty strings');
 

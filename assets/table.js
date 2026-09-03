@@ -5,11 +5,33 @@
 // of sort direction or which column is active.
 
 /**
+ * A small "ⓘ" icon that shows `text` in a custom-styled hover/focus tooltip
+ * (see the .th-info rules in style.css — a plain `title` attribute can't be
+ * resized or restyled, which is why this builds its own instead). Shared by
+ * this table's column headers and by the All-Time Records cards
+ * (leaderboard.js), so both places look and behave identically.
+ * @param {string} text
+ */
+export function makeInfoIcon(text) {
+  const info = document.createElement('span');
+  info.className = 'th-info';
+  info.textContent = 'ⓘ';
+  info.tabIndex = 0;
+  info.setAttribute('data-tooltip', text);
+  info.setAttribute('aria-label', text);
+  // Don't let a click/keypress on the icon itself bubble up to whatever
+  // clickable element it's embedded in (e.g. a sortable column header).
+  info.addEventListener('click', (e) => e.stopPropagation());
+  info.addEventListener('keydown', (e) => e.stopPropagation());
+  return info;
+}
+
+/**
  * @param {HTMLTableElement} table
  * @param {Array<object>} data
  * @param {Array<{key:string, label:string, get:(row)=>any, format:(row)=>string, numeric?:boolean, tooltip?:string}>} columns
- *   `tooltip`, when present, adds a small "ⓘ" next to the header with that
- *   plain-language text shown on hover (native title attribute).
+ *   `tooltip`, when present, adds a small "ⓘ" next to the header (see
+ *   makeInfoIcon above).
  * @param {string} managerKeyField - field on each row holding the manager's display name, for the alphabetical tiebreak
  * @param {{key:string, dir:1|-1}} [initialSort]
  * @param {{onSortChange?: (key:string, dir:1|-1)=>void}} [opts] - onSortChange,
@@ -59,14 +81,7 @@ export function renderSortableTable(table, data, columns, managerKeyField, initi
       if (col.key === sortKey) th.classList.add('sorted');
 
       if (col.tooltip) {
-        const info = document.createElement('span');
-        info.className = 'th-info';
-        info.textContent = 'ⓘ';
-        info.title = col.tooltip;
-        info.setAttribute('aria-label', col.tooltip);
-        // Don't let a click/hover on the icon itself trigger a sort toggle.
-        info.addEventListener('click', (e) => e.stopPropagation());
-        th.appendChild(info);
+        th.appendChild(makeInfoIcon(col.tooltip));
       }
 
       const activate = () => {
