@@ -12,10 +12,16 @@
  *   plain-language text shown on hover (native title attribute).
  * @param {string} managerKeyField - field on each row holding the manager's display name, for the alphabetical tiebreak
  * @param {{key:string, dir:1|-1}} [initialSort]
+ * @param {{onSortChange?: (key:string, dir:1|-1)=>void}} [opts] - onSortChange,
+ *   if given, fires whenever the user changes the sort (header click), so a
+ *   caller that re-renders this table with a different dataset (e.g. a
+ *   filter toggle) can pass the same sort back in as the next initialSort
+ *   instead of resetting it.
  */
-export function renderSortableTable(table, data, columns, managerKeyField, initialSort) {
+export function renderSortableTable(table, data, columns, managerKeyField, initialSort, opts = {}) {
   let sortKey = initialSort?.key ?? columns[0].key;
   let sortDir = initialSort?.dir ?? 1;
+  const { onSortChange } = opts;
 
   function sortedRows() {
     const col = columns.find((c) => c.key === sortKey);
@@ -70,6 +76,7 @@ export function renderSortableTable(table, data, columns, managerKeyField, initi
           sortKey = col.key;
           sortDir = 1;
         }
+        onSortChange?.(sortKey, sortDir);
         render();
       };
       th.addEventListener('click', activate);

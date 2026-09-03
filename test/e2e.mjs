@@ -331,6 +331,36 @@ await page.click(`#career-table thead th:nth-child(${champIndex + 1})`); // then
 const topManagerAfterSort = await page.$eval('#career-table tbody tr:first-child td:first-child', (td) => td.textContent);
 assert(topManagerAfterSort === 'Tim', `sorting by Championships desc puts Tim first (got ${topManagerAfterSort})`);
 
+// Manager filter toggle: "All Managers" (default) vs "Active Managers"
+// (only whoever has a row in the most recently loaded season -- 2025 in
+// the fixtures, which has 10 managers per fixtures/2025.csv).
+const allBtnSelected = await page.$eval('#manager-filter-toggle [data-mode="all"]', (b) => b.classList.contains('is-selected') && b.getAttribute('aria-pressed') === 'true');
+assert(allBtnSelected, '"All Managers" is selected by default');
+const activeBtnLabel = await page.$eval('#manager-filter-toggle [data-mode="active"]', (b) => b.textContent);
+assert(activeBtnLabel === 'Active Managers (2025)', `"Active Managers" button is labeled with the most recent season (got ${activeBtnLabel})`);
+
+await page.click('#manager-filter-toggle [data-mode="active"]');
+await page.waitForFunction(() => document.querySelectorAll('#career-table tbody tr').length !== 17);
+const activeRowCount = await page.$$eval('#career-table tbody tr', (rows) => rows.length);
+assert(activeRowCount === 10, `Active Managers view shows only the 10 managers from the 2025 fixture (got ${activeRowCount})`);
+const activeToggleState = await page.$eval('#manager-filter-toggle [data-mode="active"]', (b) => b.classList.contains('is-selected') && b.getAttribute('aria-pressed') === 'true');
+assert(activeToggleState, '"Active Managers" button shows selected state after clicking it');
+const allToggleState = await page.$eval('#manager-filter-toggle [data-mode="all"]', (b) => b.classList.contains('is-selected') || b.getAttribute('aria-pressed') === 'true');
+assert(!allToggleState, '"All Managers" button loses its selected state once "Active Managers" is picked');
+const activeManagerNames = await page.$$eval('#career-table tbody tr td:first-child', (tds) => tds.map((td) => td.textContent));
+assert(!activeManagerNames.includes('Carter'), 'Carter (no 2025 row) is excluded from the Active Managers view');
+assert(activeManagerNames.includes('Tim') && activeManagerNames.includes('Marisa'), 'managers who did play in 2025 remain in the Active Managers view');
+// Sort state (Championships desc, set above) should carry over across the toggle rather than resetting.
+const topManagerActiveView = activeManagerNames[0];
+assert(topManagerActiveView === 'Tim', `sort (Championships desc) is preserved across the filter toggle, Tim still on top (got ${topManagerActiveView})`);
+
+await page.click('#manager-filter-toggle [data-mode="all"]');
+await page.waitForFunction(() => document.querySelectorAll('#career-table tbody tr').length === 17);
+const restoredRowCount = await page.$$eval('#career-table tbody tr', (rows) => rows.length);
+assert(restoredRowCount === 17, `switching back to "All Managers" restores all 17 managers (got ${restoredRowCount})`);
+const restoredManagerNames = await page.$$eval('#career-table tbody tr td:first-child', (tds) => tds.map((td) => td.textContent));
+assert(restoredManagerNames.includes('Carter'), 'Carter reappears once back on "All Managers"');
+
 // Frozen Manager column: stays pinned in place while the table scrolls horizontally.
 const stickyStyles = await page.evaluate(() => {
   const th = document.querySelector('#career-table thead th:first-child');

@@ -37,10 +37,50 @@ async function main() {
   }
 
   const careers = aggregateCareers(seasons);
-  renderCareerTable(careers);
+
+  // "Active Managers" = whoever has a row in the most recent season that
+  // actually loaded. `seasons` is sorted ascending by year and only
+  // contains years that loaded successfully (loadAllSeasons), so if the
+  // latest year happened to fail to load this quietly falls back to the
+  // next-most-recent one -- same partial-failure behavior as every other
+  // stat on this page, and the error banner above already surfaces that.
+  const mostRecentSeason = seasons.length ? seasons[seasons.length - 1] : null;
+  const activeManagerKeys = new Set((mostRecentSeason?.rows ?? []).map((r) => r.managerKey));
+
+  const activeToggleBtn = document.querySelector('#manager-filter-toggle [data-mode="active"]');
+  if (activeToggleBtn && mostRecentSeason) {
+    activeToggleBtn.textContent = `Active Managers (${mostRecentSeason.year})`;
+  }
+
+  let filterMode = 'all'; // 'all' | 'active'
+  let currentSort = { key: 'regW', dir: -1 };
+
+  function render() {
+    const filtered = filterMode === 'active'
+      ? careers.filter((c) => activeManagerKeys.has(c.managerKey))
+      : careers;
+    renderCareerTable(filtered, currentSort, (key, dir) => {
+      currentSort = { key, dir };
+    });
+  }
+
+  document.querySelectorAll('#manager-filter-toggle .segmented-option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.mode === filterMode) return;
+      filterMode = btn.dataset.mode;
+      document.querySelectorAll('#manager-filter-toggle .segmented-option').forEach((b) => {
+        const selected = b === btn;
+        b.classList.toggle('is-selected', selected);
+        b.setAttribute('aria-pressed', String(selected));
+      });
+      render();
+    });
+  });
+
+  render();
 }
 
-function renderCareerTable(careers) {
+function renderCareerTable(careers, currentSort, onSortChange) {
   const table = document.getElementById('career-table');
   const columns = [
     { key: 'manager', label: 'Manager', get: (r) => r.manager, format: (r) => r.manager },
@@ -164,7 +204,7 @@ function renderCareerTable(careers) {
       tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Negative = finished worse than their scoring alone would predict (unlucky). This shows the manager's single unluckiest season.",
     },
   ];
-  renderSortableTable(table, careers, columns, 'manager', { key: 'regW', dir: -1 });
+  renderSortableTable(table, careers, columns, 'manager', currentSort, { onSortChange });
 }
 
 main().catch((err) => {

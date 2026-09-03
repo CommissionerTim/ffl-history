@@ -24,6 +24,13 @@
     <div id="status" class="status-banner" hidden></div>
 
     <section class="panel">
+      <div class="table-toolbar">
+        <span class="toolbar-label">Showing:</span>
+        <div id="manager-filter-toggle" class="segmented-toggle" role="group" aria-label="Filter managers">
+          <button type="button" class="segmented-option is-selected" data-mode="all" aria-pressed="true">All Managers</button>
+          <button type="button" class="segmented-option" data-mode="active" aria-pressed="false">Active Managers</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table id="career-table"></table>
       </div>

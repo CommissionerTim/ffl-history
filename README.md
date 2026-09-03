@@ -14,9 +14,14 @@ computed, never estimated or hand-typed.
   computed), plus any freeform cards from the sheet's "Other Records" tab
   appended after them in the same format (see "Day-to-day maintenance").
 - `career-stats.html` — Career Stats: the full sortable career-totals table.
-  The Manager column is frozen (sticky) so it stays in view while scrolling
-  horizontally through the table's many columns. Columns include each
-  manager's personal single-season bests/worsts:
+  A toggle above the table switches between "All Managers" (every manager
+  who's ever played, the default) and "Active Managers" (only whoever has a
+  row in the most recently loaded season — see `YEARS` in `config.js`).
+  This is a display filter only: it never changes any manager's computed
+  totals, just which rows show. The Manager column is frozen (sticky) so it
+  stays in view while scrolling horizontally through the table's many
+  columns. Columns include each manager's personal single-season
+  bests/worsts:
   Best/Worst Single-Season Record (by regular-season win%), Highest Scoring
   Season (best single-season points/game), Highest Single-Week Score,
   Highest Points-Against/Game, Highest/Lowest Single-Season Z-Score,
