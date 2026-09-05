@@ -155,6 +155,16 @@ function computedRecordCards(rb) {
       holders: holdersText(rb.worstZScore.holders, true),
       tooltip: "The single lowest Z-score anyone has ever posted in a season — how many standard deviations below that season's league-average points scored they were.",
     },
+    {
+      label: 'Most Chat Ragequits',
+      value: rb.mostCareerRagequits.value ?? '—',
+      holders: holdersText(rb.mostCareerRagequits.holders, false),
+    },
+    {
+      label: 'Most Chat Ragequits, Single Season',
+      value: rb.mostRagequitsSeason.value ?? '—',
+      holders: holdersText(rb.mostRagequitsSeason.holders, true),
+    },
   ];
 }
 

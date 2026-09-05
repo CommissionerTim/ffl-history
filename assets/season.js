@@ -104,6 +104,7 @@ function renderYear(year) {
     { key: 'ppg', label: 'Points/Game', numeric: true, get: (r) => r.ppg, format: (r) => num(r.ppg, 2) },
     { key: 'highestWeek', label: 'Highest Single Week', numeric: true, get: (r) => r.highestWeek, format: (r) => num(r.highestWeek, 2) },
     { key: 'moves', label: 'Moves', numeric: true, get: (r) => r.moves, format: (r) => String(r.moves) },
+    { key: 'chatRagequits', label: 'Chat Ragequits', numeric: true, get: (r) => r.chatRagequits, format: (r) => String(r.chatRagequits) },
     {
       key: 'zScore', label: 'Z-Score (Points)', numeric: true,
       get: (r) => r.zScore, format: (r) => signedNum(r.zScore, 2),

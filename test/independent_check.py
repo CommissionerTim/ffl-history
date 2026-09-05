@@ -83,6 +83,8 @@ careers = all_rows.groupby("ManagerKey").agg(
     regSeasonFirsts=("IsRegSeasonFirst", "sum"),
     avgFinalStanding=("Final Standing", "mean"),
     avgMoves=("Moves", "mean"),
+    careerChatRagequits=("Chat Ragequits", "sum"),
+    avgRagequits=("Chat Ragequits", "mean"),
 ).reset_index()
 careers["regWinPct"] = (careers["regW"] + 0.5 * careers["regT"]) / (careers["regW"] + careers["regL"] + careers["regT"])
 careers["playoffDenom"] = careers["playoffW"] + careers["playoffL"]
@@ -126,6 +128,8 @@ for _, row in careers.iterrows():
         ("avgFinalStanding", row["avgFinalStanding"], js["avgFinalStanding"]),
         ("avgMoves", row["avgMoves"], js["avgMoves"]),
         ("regWinPct", row["regWinPct"], js["regWinPct"]),
+        ("careerChatRagequits", row["careerChatRagequits"], js["careerChatRagequits"]),
+        ("avgRagequits", row["avgRagequits"], js["avgRagequits"]),
     ]:
         if abs(py_val - js_val) > 1e-6:
             print(f"MISMATCH {key}.{name}: pandas={py_val} js={js_val}")
@@ -314,6 +318,13 @@ for key, g in all_rows.groupby("ManagerKey"):
         print(f"MISMATCH {key}.maidBowlAppearances: pandas={py_maid_bowl} js={js_maid_bowl}")
         new_personal_mismatches += 1
 
+    # Most Chat Ragequits in a single season (personal best); ties -> earliest year.
+    r_ragequits = g.sort_values(["Chat Ragequits", "Year"], ascending=[False, True]).iloc[0]
+    js_ragequits = js["bestRagequitsSeason"]
+    if js_ragequits is None or r_ragequits["Year"] != js_ragequits["year"] or r_ragequits["Chat Ragequits"] != js_ragequits["value"]:
+        print(f"MISMATCH {key}.bestRagequitsSeason: pandas={r_ragequits[['Year','Chat Ragequits']].to_dict()} js={js_ragequits}")
+        new_personal_mismatches += 1
+
 print(f"\n{new_personal_mismatches} new-personal-stat mismatches found across {len(careers)} managers.\n")
 
 # Fold maidBowlAppearances into the pandas careers frame for the record-book
@@ -430,6 +441,18 @@ _v = all_rows["ZScore"].min()
 _h = all_rows.loc[(all_rows["ZScore"] - _v).abs() < 1e-6, "Manager"].tolist()
 check_scalar("worstZScore", _v, js_out["recordBook"]["worstZScore"])
 check_holders("worstZScore", _h, js_out["recordBook"]["worstZScore"])
+
+# Most Chat Ragequits (career total)
+_v = careers["careerChatRagequits"].max()
+_h = [manager_display[k] for k in careers.loc[careers["careerChatRagequits"] == _v, "ManagerKey"]]
+check_scalar("mostCareerRagequits", _v, js_out["recordBook"]["mostCareerRagequits"])
+check_holders("mostCareerRagequits", _h, js_out["recordBook"]["mostCareerRagequits"])
+
+# Most Chat Ragequits, Single Season
+_v = all_rows["Chat Ragequits"].max()
+_h = all_rows.loc[all_rows["Chat Ragequits"] == _v, "Manager"].tolist()
+check_scalar("mostRagequitsSeason", _v, js_out["recordBook"]["mostRagequitsSeason"])
+check_holders("mostRagequitsSeason", _h, js_out["recordBook"]["mostRagequitsSeason"])
 
 print(f"\n{rb_mismatches} record-book mismatches found.\n")
 

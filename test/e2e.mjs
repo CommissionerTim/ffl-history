@@ -143,6 +143,8 @@ assert(
       'Unluckiest season ever',
       'Best single-season Z-score',
       'Worst single-season Z-score',
+      'Most Chat Ragequits',
+      'Most Chat Ragequits, Single Season',
       // "Other Records" tab (hand-entered, appended after the computed
       // cards) — fixture has 9 rows (7 real + 2 synthetic edge cases), all
       // with a "Record Name", so all 9 render (only the name is required;
@@ -159,7 +161,7 @@ assert(
     ].join('|'),
   `record cards are in the requested order, computed then other-records (got: ${recordCards.map((c) => c.label).join(', ')})`
 );
-assert(recordCards.length === 27, `record book has 18 computed + 9 other-records cards = 27 (got ${recordCards.length})`);
+assert(recordCards.length === 29, `record book has 20 computed + 9 other-records cards = 29 (got ${recordCards.length})`);
 const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
 assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
 const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
@@ -205,6 +207,12 @@ assert(cardByLabel('Best single-season Z-score')?.value === '+2.02', `best singl
 assert(cardByLabel('Best single-season Z-score')?.holders.includes('Tim (2025)'), 'best single-season z-score holder = Tim (2025)');
 assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst single-season z-score = -2.00 (got ${cardByLabel('Worst single-season Z-score')?.value})`);
 assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
+
+// NEW (this round): Chat Ragequits record-book cards, cross-checked against the independent pandas run.
+assert(cardByLabel('Most Chat Ragequits')?.value === '17', `most career chat ragequits = 17 (got ${cardByLabel('Most Chat Ragequits')?.value})`);
+assert(cardByLabel('Most Chat Ragequits')?.holders === 'David', `most career chat ragequits holder = David (got ${cardByLabel('Most Chat Ragequits')?.holders})`);
+assert(cardByLabel('Most Chat Ragequits, Single Season')?.value === '8', `most chat ragequits in a season = 8 (got ${cardByLabel('Most Chat Ragequits, Single Season')?.value})`);
+assert(cardByLabel('Most Chat Ragequits, Single Season')?.holders.includes('David (2020)'), 'most chat ragequits in a season holder = David (2020)');
 
 // The 4 record-book cards whose stat also has a hover tooltip on Career/Season
 // Stats (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score)
@@ -347,6 +355,20 @@ assert(carterRow && carterRow[pctPlayoffIndex] === '0.0%', `Carter % of playoff 
 assert(carterRow && carterRow[worstZScoreIndex] === '-0.44 (2017)', `Carter lowest single-season z-score = -0.44 (2017) (got ${carterRow?.[worstZScoreIndex]})`);
 assert(carterRow && carterRow[avgZScoreIndex] === '+0.06', `Carter all-time average z-score = +0.06 (got ${carterRow?.[avgZScoreIndex]})`);
 
+// NEW (this round): Chat Ragequits career columns, cross-checked against the independent pandas run.
+const davidRow = await page.$$eval('#career-table tbody tr', (rows) => {
+  const r = rows.find((tr) => tr.children[0].textContent === 'David');
+  return r ? [...r.children].map((td) => td.textContent) : null;
+});
+const careerRagequitsIndex = await headerIndex('#career-table', 'Chat Ragequits');
+const bestRagequitsIndex = await headerIndex('#career-table', 'Most Ragequits in a Season');
+const avgRagequitsIndex = await headerIndex('#career-table', 'Average Ragequits/Season');
+assert(davidRow && davidRow[careerRagequitsIndex] === '17', `David career Chat Ragequits = 17 (got ${davidRow?.[careerRagequitsIndex]})`);
+assert(davidRow && davidRow[bestRagequitsIndex] === '8 (2020)', `David most ragequits in a season = 8 (2020) (got ${davidRow?.[bestRagequitsIndex]})`);
+assert(davidRow && davidRow[avgRagequitsIndex] === '2.1', `David average ragequits/season = 2.1 (got ${davidRow?.[avgRagequitsIndex]})`);
+assert(timRow && timRow[careerRagequitsIndex] === '0', `Tim (never ragequit) career Chat Ragequits = 0 (got ${timRow?.[careerRagequitsIndex]})`);
+assert(timRow && timRow[bestRagequitsIndex] === '0 (2015)', `Tim most ragequits in a season = 0 (2015, earliest year tiebreak) (got ${timRow?.[bestRagequitsIndex]})`);
+
 // Hover-tooltip icons: Z-score (best+worst), Luckiest/Unluckiest, avg Z-score, % Playoff Seasons.
 const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));
 assert(careerTooltips.length === 6, `career table has 6 tooltip icons (got ${careerTooltips.length})`);
@@ -453,6 +475,16 @@ assert(timRow2025 && timRow2025[zScoreIdx] === '+2.02', `Tim 2025 Z-score = +2.0
 // Pythagorean exponent is fit to this league's own history (6.1), not the NFL's 2.37 — see fit_pythagorean_exponent.py.
 assert(timRow2025 && timRow2025[pythagIdx] === '67.1%', `Tim 2025 Pythagorean win% = 67.1% (got ${timRow2025?.[pythagIdx]})`);
 assert(timRow2025 && timRow2025[overUnderIdx] === '+9.8%', `Tim 2025 win% over/under Pythagorean = +9.8% (got ${timRow2025?.[overUnderIdx]})`);
+
+// NEW (this round): raw Chat Ragequits passthrough column on Season Stats.
+const ragequitsIdx = await headerIndex('#season-table', 'Chat Ragequits');
+const benRow2025 = await page.$$eval('#season-table tbody tr', (rows) => {
+  const r = rows.find((tr) => tr.children[0].textContent === 'Ben');
+  return r ? [...r.children].map((td) => td.textContent) : null;
+});
+assert(ragequitsIdx !== -1, '"Chat Ragequits" column header exists on Season Stats');
+assert(benRow2025 && benRow2025[ragequitsIdx] === '2', `Ben 2025 Chat Ragequits = 2 (got ${benRow2025?.[ragequitsIdx]})`);
+assert(timRow2025 && timRow2025[ragequitsIdx] === '0', `Tim 2025 Chat Ragequits = 0 (got ${timRow2025?.[ragequitsIdx]})`);
 
 // Hover-tooltip icons exist with real plain-language explainer text.
 const seasonTooltips = await page.$$eval('#season-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));

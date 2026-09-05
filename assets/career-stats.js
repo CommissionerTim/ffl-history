@@ -203,6 +203,19 @@ function renderCareerTable(careers, currentSort, onSortChange) {
       format: (r) => r.unluckiestSeason ? `${signedInt(r.unluckiestSeason.value)} (${r.unluckiestSeason.year})` : '—',
       tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Negative = finished worse than their scoring alone would predict (unlucky). This shows the manager's single unluckiest season.",
     },
+    {
+      key: 'careerChatRagequits', label: 'Chat Ragequits', numeric: true,
+      get: (r) => r.careerChatRagequits, format: (r) => num(r.careerChatRagequits),
+    },
+    {
+      key: 'bestRagequitsSeason', label: 'Most Ragequits in a Season', numeric: true,
+      get: (r) => r.bestRagequitsSeason ? r.bestRagequitsSeason.value : null,
+      format: (r) => r.bestRagequitsSeason ? `${num(r.bestRagequitsSeason.value)} (${r.bestRagequitsSeason.year})` : '—',
+    },
+    {
+      key: 'avgRagequits', label: 'Average Ragequits/Season', numeric: true,
+      get: (r) => r.avgRagequits, format: (r) => num(r.avgRagequits, 1),
+    },
   ];
   renderSortableTable(table, careers, columns, 'manager', currentSort, { onSortChange });
 }

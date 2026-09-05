@@ -8,14 +8,18 @@ computed, never estimated or hand-typed.
 
 ## Pages
 
-- `index.html` — All-Time Records: the record book (18 computed cards, one
+- `index.html` — All-Time Records: the record book (20 computed cards, one
   extreme/leader stat per card, ties shown as multiple holders — see
   "Advanced stats" below for how the Z-score/luck/playoff-driven ones are
   computed), plus any freeform cards from the sheet's "Other Records" tab
   appended after them in the same format (see "Day-to-day maintenance"). The
   4 cards whose stat also appears as a column on Career/Season Stats
   (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score) carry
-  the same hover "ⓘ" explainer as that column.
+  the same hover "ⓘ" explainer as that column. "Most Chat Ragequits" and
+  "Most Chat Ragequits, Single Season" are computed from the sheet's "Chat
+  Ragequits" column (see below) the same way every other computed card is —
+  not to be confused with the unrelated, hand-typed "Other Records" entry
+  that predates this column, if one still exists on your sheet.
 - `career-stats.html` — Career Stats: the full sortable career-totals table.
   A toggle above the table switches between "All Managers" (every manager
   who's ever played, the default) and "Active Managers" (only whoever has a
@@ -29,11 +33,13 @@ computed, never estimated or hand-typed.
   Season (best single-season points/game), Highest Single-Week Score,
   Highest Points-Against/Game, Highest/Lowest Single-Season Z-Score,
   All-Time Average Z-Score, % of Playoff Seasons, and Luckiest/Unluckiest
-  Season (see "Advanced stats" below). A manager with no recorded weekly
-  high in any season shows "—" there, never "0.00".
+  Season (see "Advanced stats" below), plus career Chat Ragequits totals
+  (see below). A manager with no recorded weekly high in any season shows
+  "—" there, never "0.00".
 - `season.html` — Season Stats: pick a year, see that year's full standings
   (sortable), including Z-score, Pythagorean win expectation, and win%
-  over/under Pythagorean expectation for that season (see "Advanced stats").
+  over/under Pythagorean expectation for that season (see "Advanced stats"),
+  plus that year's raw Chat Ragequits count per manager.
 - `hall-of-fame.html` — one photo card per year's champion.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
 - `rules.html` — the league's custom rules, pulled live from a Google Doc.
@@ -182,17 +188,26 @@ math:
   them in the bottom two of the final standings (last place or
   second-to-last that year, whatever the league size was that season). See
   `bottomTwoStandingsForYear` in `calc.js`.
+- **Chat Ragequits** — a plain count typed into each year-tab's "Chat
+  Ragequits" column (0 if it never happened that season, same as Moves —
+  never left blank). Nothing fancy: Career Stats shows each manager's career
+  total, their single highest-Ragequit season (with the year, ties broken
+  by earliest year like every other personal single-season best on this
+  site), and their average per season; the record book separately tracks
+  the single highest career total and the single highest one-season count,
+  league-wide.
 
 All of the above are cross-checked at the individual manager-season level
 (not just in aggregate) against an independent pandas recomputation in
 `test/independent_check.py` — 0 mismatches across every manager-year before
-this shipped. The 18 record-book cards on `index.html` (6 original + 12
-added this round: Most Single-Season Points Against/Game, Most Career
-Points, Most Wins/Losses in a Single Season, Highest Career Playoff Win%,
-Most Career Playoff Wins, Most Championship Game Appearances, Most Maid
-Bowl Appearances, Luckiest/Unluckiest Season Ever, and Best/Worst
-Single-Season Z-Score) are likewise cross-checked, value and holder(s),
-against the same pandas recomputation.
+this shipped. The 20 computed record-book cards on `index.html` (6
+original + 12 added in an earlier round: Most Single-Season Points
+Against/Game, Most Career Points, Most Wins/Losses in a Single Season,
+Highest Career Playoff Win%, Most Career Playoff Wins, Most Championship
+Game Appearances, Most Maid Bowl Appearances, Luckiest/Unluckiest Season
+Ever, and Best/Worst Single-Season Z-Score, + 2 added most recently: Most
+Chat Ragequits and Most Chat Ragequits, Single Season) are likewise
+cross-checked, value and holder(s), against the same pandas recomputation.
 
 ## Extending the site later
 

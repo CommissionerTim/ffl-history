@@ -52,6 +52,7 @@ export function normalizeRow(raw, year) {
   const pointsAgainst = toNumber(raw['Points Against']);
   const highestWeek = toNumber(raw['Highest Single Week Score']); // null = no data, never 0
   const moves = toNumber(raw['Moves']);
+  const chatRagequits = toNumber(raw['Chat Ragequits']); // always tracked — 0 is a real count, like Moves
 
   if (finalStanding === null || pointsScored === null) return null;
 
@@ -66,6 +67,7 @@ export function normalizeRow(raw, year) {
     pointsAgainst,
     highestWeek,
     moves: moves ?? 0,
+    chatRagequits: chatRagequits ?? 0,
   };
 }
 
@@ -334,7 +336,7 @@ export function aggregateCareers(seasons) {
     let regW = 0, regL = 0, regT = 0, playoffW = 0, playoffL = 0;
     let careerPointsScored = 0, championships = 0, championshipAppearances = 0;
     let lastPlaceFinishes = 0, regSeasonFirsts = 0;
-    let standingSum = 0, movesSum = 0;
+    let standingSum = 0, movesSum = 0, ragequitsSum = 0;
 
     // Personal single-season bests/worsts (career-table columns). Each is
     // null only if the manager has no year with the underlying stat
@@ -351,6 +353,7 @@ export function aggregateCareers(seasons) {
     let worstZScoreSeason = null; // { year, value } - lowest single-season z-score
     let luckiestSeason = null; // { year, value } - max Luck Index
     let unluckiestSeason = null; // { year, value } - min Luck Index
+    let bestRagequitsSeason = null; // { year, value } - most Chat Ragequits in a single season
     let zScoreSum = 0, zScoreCount = 0; // for career-average z-score
     let playoffSeasonCount = 0; // seasons finishing #1-4 ("made playoffs")
     let maidBowlAppearances = 0; // seasons finishing in the bottom two
@@ -367,6 +370,19 @@ export function aggregateCareers(seasons) {
       if (regLeaderKeyByYear.get(r.year) === managerKey) regSeasonFirsts += 1;
       standingSum += r.finalStanding;
       movesSum += r.moves;
+      ragequitsSum += r.chatRagequits;
+
+      // Chat Ragequits is always tracked (0 is a real count, never null),
+      // so this updates every row unconditionally — same shape as
+      // bestSingleWeek's tiebreak (highest value, ties broken by earliest
+      // year), just without a "no data" guard.
+      if (
+        bestRagequitsSeason === null ||
+        r.chatRagequits > bestRagequitsSeason.value + EPS ||
+        (Math.abs(r.chatRagequits - bestRagequitsSeason.value) < EPS && r.year < bestRagequitsSeason.year)
+      ) {
+        bestRagequitsSeason = { year: r.year, value: r.chatRagequits };
+      }
 
       if (r.finalStanding <= 4) playoffSeasonCount += 1;
       const bottomTwo = bottomTwoByYear.get(r.year);
@@ -492,6 +508,9 @@ export function aggregateCareers(seasons) {
       unluckiestSeason,
       pctPlayoffSeasons: playoffSeasonCount / rows.length,
       maidBowlAppearances,
+      careerChatRagequits: ragequitsSum,
+      bestRagequitsSeason,
+      avgRagequits: ragequitsSum / rows.length,
     });
   }
 
@@ -584,6 +603,10 @@ export function computeRecordBook(seasons, careers) {
   const mostPlayoffWins = tiedHolders(careers, (c) => c.playoffW);
   const mostChampGameApp = tiedHolders(careers, (c) => c.championshipAppearances);
   const mostMaidBowl = tiedHolders(careers, (c) => c.maidBowlAppearances);
+  const mostCareerRagequits = tiedHolders(careers, (c) => c.careerChatRagequits);
+
+  const ragequitsRows = allRows.map((r) => ({ manager: r.manager, year: r.year, value: r.chatRagequits }));
+  const mostRagequitsSeason = tiedHolders(ragequitsRows, (r) => r.value);
 
   const withYear = (r) => ({ manager: r.manager, year: r.year });
   const noYear = (c) => ({ manager: c.manager });
@@ -608,6 +631,8 @@ export function computeRecordBook(seasons, careers) {
     unluckiestSeasonEver: { value: unluckiestSeasonEver.value, holders: unluckiestSeasonEver.holders.map(withYear) },
     bestZScore: { value: bestZScore.value, holders: bestZScore.holders.map(withYear) },
     worstZScore: { value: worstZScore.value, holders: worstZScore.holders.map(withYear) },
+    mostCareerRagequits: { value: mostCareerRagequits.value, holders: mostCareerRagequits.holders.map(noYear) },
+    mostRagequitsSeason: { value: mostRagequitsSeason.value, holders: mostRagequitsSeason.holders.map(withYear) },
   };
 }
 
