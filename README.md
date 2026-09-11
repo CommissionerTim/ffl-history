@@ -2,9 +2,9 @@
 
 A static site that reads the league's Google Sheet directly (as CSV, at page-load
 time) and computes all-time standings and records with plain, deterministic
-JavaScript. The one deliberate exception is the "Other Records" tab (see
-below) — freeform, hand-typed anecdotal records — everything else is
-computed, never estimated or hand-typed.
+JavaScript. The deliberate exceptions are the "Other Records" and "Draft
+History" tabs (see below) — freeform, hand-typed content, passed through
+verbatim — everything else is computed, never estimated or hand-typed.
 
 ## Pages
 
@@ -35,16 +35,24 @@ computed, never estimated or hand-typed.
   All-Time Average Z-Score, % of Playoff Seasons, and Luckiest/Unluckiest
   Season (see "Advanced stats" below), plus career Chat Ragequits totals
   (see below). A manager with no recorded weekly high in any season shows
-  "—" there, never "0.00".
+  "—" there, never "0.00". Every stat built from the Playoff W/L columns
+  (Playoff W, Playoff L, Playoff Win%, % of Playoff Seasons here; Highest
+  career playoff win% and Most career playoff wins on All-Time Records)
+  carries a hover "ⓘ" noting that playoff record does not include play-in
+  games — see "Play-in games" below.
 - `season.html` — Season Stats: pick a year, see that year's full standings
   (sortable), including Z-score, Pythagorean win expectation, and win%
   over/under Pythagorean expectation for that season (see "Advanced stats"),
   plus that year's raw Chat Ragequits count per manager.
 - `hall-of-fame.html` — one photo card per year's champion.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
+- `draft-history.html` — Draft History: one write-up per draft, newest
+  first, pulled straight from the sheet's "Draft History" tab (see
+  "Day-to-day maintenance" below) — freeform and hand-typed, like Other
+  Records, never computed.
 - `rules.html` — the league's custom rules, pulled live from a Google Doc.
 
-All six pages are behind a simple shared-password gate (`assets/auth.js`). It's
+All seven pages are behind a simple shared-password gate (`assets/auth.js`). It's
 client-side only — good enough to keep the site out of casual/search reach, not
 real security.
 
@@ -102,6 +110,22 @@ column sidesteps the issue entirely — plain numbers still display and sort
 fine as text on this page, since "Record Value" is never treated as a
 number anywhere in the code (see `normalizeOtherRecordsRows` in
 `calc.js`).
+
+**Adding a Draft History entry (anecdotal, hand-typed):** on the sheet's
+"Draft History" tab, add a row with "Year", "Location", and "Recap" (e.g.
+"2029" / "Someone's Backyard | Austin, TX" / "A recap of how the draft
+went."). It shows up as its own write-up on the Draft History page after
+the next page load, newest year first — no site change needed. Only
+"Recap" is required — a row missing it is skipped rather than shown as a
+blank entry. "Year" can be left blank for a draft that predates the
+league's records; it's shown at the very end of the list, labeled "Before
+2015" instead of a year. "Location" can also be left blank (e.g. for a
+draft whose venue isn't decided yet) and the page just omits it. Like
+"Other Records", these values are never computed or cross-checked —
+they're exactly what's typed into the sheet. If the tab gets renamed or
+deleted, the page shows its standard error banner rather than silently
+breaking; to rename the tab, update `DRAFT_HISTORY_TAB` in `config.js` to
+match.
 
 **Changing the password:** open `hash-password.html` in a browser (don't need
 to deploy it anywhere, just open the file), type the new password, copy the
@@ -184,6 +208,14 @@ math:
   they finished #1-4 in the final standings ("made the playoffs"). Uses
   Final Standing directly, unlike the "#1 regular-season finish" judgment
   call described above.
+- **Play-in games** — the sheet's Playoff W/L columns (and everything
+  derived from them: Playoff W, Playoff L, Playoff Win%, % of Playoff
+  Seasons on Career Stats; Highest career playoff win% and Most career
+  playoff wins on the record book) are entered by convention to **exclude**
+  play-in games — only games in the actual playoff bracket count. This
+  isn't enforced or checked by any code; it's a data-entry convention on
+  the sheet itself, which is why every one of those stats carries a hover
+  "ⓘ" repeating it as a reminder.
 - **Maid Bowl appearances** — how many of a manager's seasons ended with
   them in the bottom two of the final standings (last place or
   second-to-last that year, whatever the league size was that season). See

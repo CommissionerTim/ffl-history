@@ -104,6 +104,29 @@ export function normalizeOtherRecordsRows(parsedRows) {
     .filter((r) => r !== null);
 }
 
+/**
+ * Parse the freeform "Draft History" tab: hand-entered writeups of each
+ * year's draft, with columns "Year", "Location", "Recap". Like Other
+ * Records, these are never computed — trimmed and passed through verbatim.
+ * "Year" may be blank (e.g. a draft predating organized year-by-year
+ * records) and parses to `null` in that case, never 0 or a guessed year.
+ * Only "Recap" (the actual writeup) is required for a row to appear; a row
+ * missing it is skipped rather than shown as an empty entry.
+ * @returns {Array<{year:number|null, location:string, recap:string}>}
+ */
+export function normalizeDraftHistoryRows(parsedRows) {
+  return parsedRows
+    .map((raw) => {
+      const yearRaw = (raw['Year'] ?? '').toString().trim();
+      const location = (raw['Location'] ?? '').toString().trim();
+      const recap = (raw['Recap'] ?? '').toString().trim();
+      if (!recap) return null;
+      const year = yearRaw === '' ? null : Number(yearRaw);
+      return { year: Number.isFinite(year) ? year : null, location, recap };
+    })
+    .filter((r) => r !== null);
+}
+
 // ---------------------------------------------------------------------
 // Per-row / per-season derived values
 // ---------------------------------------------------------------------

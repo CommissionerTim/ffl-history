@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
-  <title>Career Stats</title>
+  <title>Draft History</title>
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
@@ -12,11 +12,11 @@
     <h1 id="site-title">League Record Book</h1>
     <nav class="site-nav">
       <a href="index.html">All-Time Records</a>
-      <a href="career-stats.html" aria-current="page">Career Stats</a>
+      <a href="career-stats.html">Career Stats</a>
       <a href="season.html">Season Stats</a>
       <a href="hall-of-fame.html">Hall of Fame</a>
       <a href="maid-quarters.html">Maid Quarters</a>
-      <a href="draft-history.html">Draft History</a>
+      <a href="draft-history.html" aria-current="page">Draft History</a>
       <a href="rules.html">League Rules</a>
     </nav>
   </header>
@@ -25,22 +25,13 @@
     <div id="status" class="status-banner" hidden></div>
 
     <section class="panel">
-      <div class="table-toolbar">
-        <span class="toolbar-label">Showing:</span>
-        <div id="manager-filter-toggle" class="segmented-toggle" role="group" aria-label="Filter managers">
-          <button type="button" class="segmented-option is-selected" data-mode="all" aria-pressed="true">All Managers</button>
-          <button type="button" class="segmented-option" data-mode="active" aria-pressed="false">Active Managers</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table id="career-table"></table>
-      </div>
+      <div id="draft-history-list" class="draft-history-list"></div>
     </section>
   </main>
 
   <footer class="site-footer">Data pulled live from the league's Google Sheet.</footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script type="module" src="assets/career-stats.js"></script>
+  <script type="module" src="assets/draft-history.js"></script>
 </body>
 </html>

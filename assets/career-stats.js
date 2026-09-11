@@ -17,6 +17,11 @@ const signedNum = (v, digits = 2) => {
 };
 const signedInt = (v) => (v === null || v === undefined ? '—' : v > 0 ? '+' + v : String(v));
 
+// Shared note appended to every stat that references a manager's playoff
+// win/loss record (see career-stats.js's `columns` array below) — the
+// sheet's Playoff W/L columns exclude play-in games by convention.
+const PLAYOFF_NOTE = 'Playoff record does not include play-in games.';
+
 async function main() {
   await requireAuth(PASSWORD_HASH);
 
@@ -107,19 +112,22 @@ function renderCareerTable(careers, currentSort, onSortChange) {
     {
       key: 'playoffW', label: 'Playoff W', numeric: true,
       get: (r) => r.playoffW, format: (r) => num(r.playoffW),
+      tooltip: PLAYOFF_NOTE,
     },
     {
       key: 'playoffL', label: 'Playoff L', numeric: true,
       get: (r) => r.playoffL, format: (r) => num(r.playoffL),
+      tooltip: PLAYOFF_NOTE,
     },
     {
       key: 'playoffWinPct', label: 'Playoff Win%', numeric: true,
       get: (r) => r.playoffWinPct, format: (r) => pct(r.playoffWinPct),
+      tooltip: PLAYOFF_NOTE,
     },
     {
       key: 'pctPlayoffSeasons', label: '% of Playoff Seasons', numeric: true,
       get: (r) => r.pctPlayoffSeasons, format: (r) => pct(r.pctPlayoffSeasons),
-      tooltip: 'The percentage of this manager\'s seasons in which they made the playoffs — i.e. finished #1-4 in the final standings.',
+      tooltip: `The percentage of this manager's seasons in which they made the playoffs — i.e. finished #1-4 in the final standings. ${PLAYOFF_NOTE}`,
     },
     {
       key: 'careerPointsScored', label: 'Career Points (Reg)', numeric: true,

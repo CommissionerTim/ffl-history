@@ -189,6 +189,12 @@ assert(cardByLabel('Highest career playoff win%')?.value === '100.0%', `highest 
 assert(cardByLabel('Highest career playoff win%')?.holders === 'Ray', 'highest playoff win% holder = Ray');
 assert(cardByLabel('Most career playoff wins')?.value === '7', `most playoff wins = 7 (got ${cardByLabel('Most career playoff wins')?.value})`);
 assert(cardByLabel('Most career playoff wins')?.holders === 'Tim', 'most playoff wins holder = Tim');
+
+// NEW (this round): playoff-record cards carry the "no play-in games" note.
+for (const label of ['Highest career playoff win%', 'Most career playoff wins']) {
+  const tooltip = cardByLabel(label)?.tooltip;
+  assert(tooltip === 'Playoff record does not include play-in games.', `"${label}" card has the play-in-games tooltip (got ${JSON.stringify(tooltip)})`);
+}
 assert(cardByLabel('Most championship game appearances')?.value === '4', `most champ game appearances = 4 (got ${cardByLabel('Most championship game appearances')?.value})`);
 assert(
   ['Josh', 'Marisa', 'Tim'].every((m) => cardByLabel('Most championship game appearances')?.holders.includes(m)),
@@ -273,7 +279,8 @@ assert(
   navText.includes('All-Time Records') && navText.includes('Career Stats') && navText.includes('Season Stats'),
   `nav shows renamed labels including Career Stats (got ${navText})`
 );
-assert(navText.length === 6, `nav has 6 links (got ${navText.length})`);
+assert(navText.includes('Draft History'), `nav includes "Draft History" (got ${navText})`);
+assert(navText.length === 7, `nav has 7 links (got ${navText.length})`);
 
 // ---- career-stats.html: the career totals table lives here now ----
 await page.goto(`${baseUrl}/career-stats.html`);
@@ -346,6 +353,26 @@ const worstZScoreIndex = await headerIndex('#career-table', 'Lowest Single-Seaso
 const avgZScoreIndex = await headerIndex('#career-table', 'All-Time Average Z-Score');
 assert(pctPlayoffIndex !== -1, '"% of Playoff Seasons" column header exists, next to Playoff Win%');
 assert(pctPlayoffIndex === (await headerIndex('#career-table', 'Playoff Win%')) + 1, '"% of Playoff Seasons" column sits immediately after "Playoff Win%"');
+
+// NEW (this round): every playoff-record stat (Playoff W/L/Win% columns, plus
+// % of Playoff Seasons) carries the "no play-in games" note.
+const careerHeaderTooltips = await page.$$eval('#career-table thead th', (ths) =>
+  ths.map((th) => {
+    const info = th.querySelector('.th-info');
+    // Strip the trailing sort-arrow text (added as a plain text node) and the
+    // tooltip icon's own "ⓘ" glyph to get the clean column label.
+    const label = th.childNodes[0]?.nodeValue?.replace(/\s*[▲▼]\s*$/, '').trim() ?? '';
+    return { label, tooltip: info ? info.dataset.tooltip : null };
+  })
+);
+const headerTooltip = (label) => careerHeaderTooltips.find((h) => h.label === label)?.tooltip;
+assert(headerTooltip('Playoff W') === 'Playoff record does not include play-in games.', `"Playoff W" column has the play-in-games tooltip (got ${JSON.stringify(headerTooltip('Playoff W'))})`);
+assert(headerTooltip('Playoff L') === 'Playoff record does not include play-in games.', `"Playoff L" column has the play-in-games tooltip (got ${JSON.stringify(headerTooltip('Playoff L'))})`);
+assert(headerTooltip('Playoff Win%') === 'Playoff record does not include play-in games.', `"Playoff Win%" column has the play-in-games tooltip (got ${JSON.stringify(headerTooltip('Playoff Win%'))})`);
+assert(
+  headerTooltip('% of Playoff Seasons')?.includes('Playoff record does not include play-in games.'),
+  `"% of Playoff Seasons" tooltip still explains the stat AND carries the play-in-games note (got ${JSON.stringify(headerTooltip('% of Playoff Seasons'))})`
+);
 assert(worstZScoreIndex === bestZScoreIndex + 1, '"Lowest Single-Season Z-Score" column sits immediately after "Highest Single-Season Z-Score"');
 assert(avgZScoreIndex === worstZScoreIndex + 1, '"All-Time Average Z-Score" column sits immediately after "Lowest Single-Season Z-Score"');
 assert(timRow && timRow[pctPlayoffIndex] === '72.7%', `Tim % of playoff seasons = 72.7% (got ${timRow?.[pctPlayoffIndex]})`);
@@ -369,9 +396,10 @@ assert(davidRow && davidRow[avgRagequitsIndex] === '2.1', `David average ragequi
 assert(timRow && timRow[careerRagequitsIndex] === '0', `Tim (never ragequit) career Chat Ragequits = 0 (got ${timRow?.[careerRagequitsIndex]})`);
 assert(timRow && timRow[bestRagequitsIndex] === '0 (2015)', `Tim most ragequits in a season = 0 (2015, earliest year tiebreak) (got ${timRow?.[bestRagequitsIndex]})`);
 
-// Hover-tooltip icons: Z-score (best+worst), Luckiest/Unluckiest, avg Z-score, % Playoff Seasons.
+// Hover-tooltip icons: Z-score (best+worst), Luckiest/Unluckiest, avg Z-score,
+// % Playoff Seasons, plus (this round) Playoff W/L/Win%.
 const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));
-assert(careerTooltips.length === 6, `career table has 6 tooltip icons (got ${careerTooltips.length})`);
+assert(careerTooltips.length === 9, `career table has 9 tooltip icons (got ${careerTooltips.length})`);
 assert(careerTooltips.every((t) => t.length > 20), 'career table tooltips carry real explainer text, not empty strings');
 
 // Sorting: click "Championships" header, confirm Tim (3) sorts to top in descending order.
@@ -553,6 +581,34 @@ assert(mqCards.length === 8, `Maid Quarters shows all 8 configured years (got ${
 assert(mqCards.every((c) => !c.hasTeam), 'Maid Quarters cards never render a team-name line');
 assert(mqCards[0].year === '2025', `Maid Quarters sorts newest first (got ${mqCards[0]?.year})`);
 assert(mqCards.every((c) => c.manager && c.manager !== '—'), 'every Maid Quarters card resolves a manager name from the sheet');
+
+// ---- draft-history.html: freeform, hand-entered writeups pulled live from the sheet ----
+await page.goto(`${baseUrl}/draft-history.html`);
+const draftHistoryGateVisible = await page.$('.auth-box');
+assert(draftHistoryGateVisible === null, 'draft-history.html does not re-prompt within the same session');
+assert((await page.title()).includes('Draft History'), 'draft-history.html title includes "Draft History"');
+
+await page.waitForSelector('.draft-history-entry');
+const draftEntries = await page.$$eval('.draft-history-entry', (cards) =>
+  cards.map((c) => ({
+    // The heading's first child is the plain year/"Before 2015" text node --
+    // the location (if any) is a separate <span> appended after it.
+    year: c.querySelector('.draft-history-heading')?.childNodes[0]?.nodeValue?.trim(),
+    location: c.querySelector('.draft-history-location')?.textContent ?? null,
+    recap: c.querySelector('.draft-history-recap')?.textContent,
+  }))
+);
+console.log('Draft History entries:', draftEntries);
+// Fixture has 8 data rows; the row with a Location but no Recap is dropped
+// (only "Recap" is required for a row to appear), leaving 7 entries.
+assert(draftEntries.length === 7, `Draft History shows 7 entries, blank-Recap row dropped (got ${draftEntries.length})`);
+assert(draftEntries[0].year === '2027', `Draft History sorts newest first (got ${draftEntries[0]?.year})`);
+assert(draftEntries[draftEntries.length - 1].year === 'Before 2015', `the blank-"Year" entry sorts last, labeled "Before 2015" (got ${draftEntries[draftEntries.length - 1]?.year})`);
+const entry2019 = draftEntries.find((e) => e.year === '2019');
+assert(entry2019?.location === "Jason's House | San Diego, CA", `2019 location is trimmed of surrounding whitespace (got ${JSON.stringify(entry2019?.location)})`);
+assert(entry2019?.recap === 'Extra whitespace around every field should be trimmed.', `2019 recap is trimmed of surrounding whitespace (got ${JSON.stringify(entry2019?.recap)})`);
+const entry2027 = draftEntries.find((e) => e.year === '2027');
+assert(entry2027?.location === null, `an entry with a blank Location renders no location span at all (got ${JSON.stringify(entry2027?.location)})`);
 
 // ---- rules.html: still gated, embeds the live Google Doc ----
 // (docs.google.com itself isn't reachable from this sandbox, so this only

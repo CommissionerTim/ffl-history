@@ -11,6 +11,7 @@ import Papa from 'papaparse';
 import {
   normalizeYearRows,
   normalizeOtherRecordsRows,
+  normalizeDraftHistoryRows,
   buildLeaderboard,
   pythagoreanWinPct,
   pointsScoredZScoresForYear,
@@ -86,6 +87,13 @@ const otherRecords = fs.existsSync(otherRecordsFixture)
     )
   : [];
 
-const out = { seasonsLoaded: years, careers, recordBook, seasonStats, otherRecords };
+const draftHistoryFixture = path.join(fixturesDir, 'Draft History.csv');
+const draftHistory = fs.existsSync(draftHistoryFixture)
+  ? normalizeDraftHistoryRows(
+      rowsFromRawCsv(Papa.parse(fs.readFileSync(draftHistoryFixture, 'utf8'), { header: false, skipEmptyLines: true }).data)
+    )
+  : [];
+
+const out = { seasonsLoaded: years, careers, recordBook, seasonStats, otherRecords, draftHistory };
 fs.writeFileSync(path.join(__dirname, 'calc_output.json'), JSON.stringify(out, null, 2));
 console.log(JSON.stringify(out, null, 2));

@@ -479,3 +479,28 @@ else:
     print("(no Other Records.csv fixture found -- skipped)")
 
 print(f"\n{other_records_mismatches} Other Records mismatches found.\n")
+
+print("=== Draft History tab: pandas vs calc.js ===")
+print("(freeform/hand-entered -- this checks the trim + skip-invalid-row parsing logic, not any computed math)")
+draft_history_mismatches = 0
+draft_history_path = os.path.join(FIXTURES, "Draft History.csv")
+if os.path.exists(draft_history_path):
+    raw = pd.read_csv(draft_history_path, dtype=str, keep_default_na=False)
+    expected = []
+    for _, row in raw.iterrows():
+        year_raw = str(row.get("Year", "")).strip()
+        location = str(row.get("Location", "")).strip()
+        recap = str(row.get("Recap", "")).strip()
+        if not recap:
+            continue  # rows missing a recap are dropped, same as normalizeDraftHistoryRows
+        year = int(year_raw) if year_raw != "" and year_raw.lstrip("-").isdigit() else None
+        expected.append({"year": year, "location": location, "recap": recap})
+
+    js_draft_history = js_out.get("draftHistory", [])
+    if expected != js_draft_history:
+        print(f"MISMATCH draftHistory: pandas={expected} js={js_draft_history}")
+        draft_history_mismatches += 1
+else:
+    print("(no Draft History.csv fixture found -- skipped)")
+
+print(f"\n{draft_history_mismatches} Draft History mismatches found.\n")

@@ -17,6 +17,11 @@ const signedNum = (v, digits = 2) => {
 };
 const signedInt = (v) => (v === null || v === undefined ? '—' : v > 0 ? '+' + v : String(v));
 
+// Shared note appended to every card that references a manager's playoff
+// win/loss record — the sheet's Playoff W/L columns exclude play-in games
+// by convention.
+const PLAYOFF_NOTE = 'Playoff record does not include play-in games.';
+
 async function main() {
   await requireAuth(PASSWORD_HASH);
 
@@ -115,11 +120,13 @@ function computedRecordCards(rb) {
       label: 'Highest career playoff win%',
       value: pct(rb.highestPlayoffWinPct.value),
       holders: holdersText(rb.highestPlayoffWinPct.holders, false),
+      tooltip: PLAYOFF_NOTE,
     },
     {
       label: 'Most career playoff wins',
       value: rb.mostPlayoffWins.value ?? '—',
       holders: holdersText(rb.mostPlayoffWins.holders, false),
+      tooltip: PLAYOFF_NOTE,
     },
     {
       label: 'Most championship game appearances',

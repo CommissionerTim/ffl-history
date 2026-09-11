@@ -2,7 +2,7 @@
 // Google Sheet at page load time, and parses it into normalized rows using
 // calc.js. This is the only network-facing module; calc.js stays pure.
 
-import { normalizeYearRows, normalizeOtherRecordsRows } from './calc.js';
+import { normalizeYearRows, normalizeOtherRecordsRows, normalizeDraftHistoryRows } from './calc.js';
 
 function csvUrlForSheetTab(sheetId, tabName) {
   // The gviz/tq endpoint accepts a sheet NAME (not gid), works cross-origin
@@ -105,4 +105,25 @@ export async function loadOtherRecords(sheetId, tabName) {
   } catch (err) {
     return { records: [], error: err?.message ?? String(err) };
   }
+}
+
+/**
+ * Fetch + parse the freeform "Draft History" tab (see config.js). Unlike
+ * `loadOtherRecords`, this tab IS the entire content of its page, so a
+ * fetch/parse failure is thrown (not swallowed) — the page-level
+ * `main().catch()` in draft-history.js turns it into the same visible
+ * error banner every other page shows on a load failure, rather than
+ * silently rendering an empty page.
+ */
+export async function loadDraftHistory(sheetId, tabName) {
+  const csvText = await fetchSheetTabCsv(sheetId, tabName);
+  // Parsed headerless (see rowsFromRawCsv above), same reasoning as Other
+  // Records: another hand-maintained tab, so it's safest to sidestep
+  // PapaParse's header-mode quirk with padded/blank trailing columns
+  // rather than assume this tab's export happens not to be padded.
+  const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+  if (parsed.errors && parsed.errors.length) {
+    throw new Error(`CSV parse error in "${tabName}" tab: ${parsed.errors[0].message}`);
+  }
+  return normalizeDraftHistoryRows(rowsFromRawCsv(parsed.data));
 }

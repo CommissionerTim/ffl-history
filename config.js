@@ -17,6 +17,16 @@ export const SITE_TITLE = 'League Record Book';
 // cards are just silently skipped rather than breaking the page.
 export const OTHER_RECORDS_TAB = 'Other Records';
 
+// Sheet tab name for the freeform, hand-entered draft history (one row per
+// draft: "Year", "Location", "Recap"). Powers the Draft History page. Add
+// or edit rows on the sheet any time — no site change needed. "Year" may
+// be left blank for a draft that predates organized year-by-year records
+// (it'll still show, just without a year in its heading, sorted after
+// every dated entry). If this tab doesn't exist yet (or gets renamed), the
+// page shows an error banner rather than a blank page — to rename the tab,
+// update DRAFT_HISTORY_TAB below to match.
+export const DRAFT_HISTORY_TAB = 'Draft History';
+
 // Google Doc ID for the League Rules page (embedded live — edits to the doc
 // show up on next page load, no site change needed). Doc must be shared as
 // "Anyone with the link" can view.
