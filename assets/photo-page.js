@@ -90,22 +90,37 @@ function buildCard(entry, row, photoDir, showTeamName) {
   const caption = document.createElement('div');
   caption.className = 'photo-caption';
 
-  const yearEl = document.createElement('div');
+  // The year always renders next to whichever line is the card's primary
+  // identifier — the team name when one is shown (Hall of Fame), otherwise
+  // the manager (Maid Quarters) — rather than as its own line above the
+  // photo. `.photo-year` keeps plain year text (e.g. "2025"); the
+  // surrounding parentheses are decorative, added in CSS.
+  const yearEl = document.createElement('span');
   yearEl.className = 'photo-year';
   yearEl.textContent = String(entry.year);
 
-  const managerEl = document.createElement('div');
-  managerEl.className = 'photo-manager';
-  managerEl.textContent = managerName || '—';
-
-  caption.appendChild(yearEl);
-  caption.appendChild(managerEl);
+  const primary = document.createElement('div');
+  primary.className = 'photo-primary';
 
   if (showTeamName && entry.teamName) {
-    const teamEl = document.createElement('div');
+    const teamEl = document.createElement('span');
     teamEl.className = 'photo-team';
     teamEl.textContent = entry.teamName;
-    caption.appendChild(teamEl);
+    primary.appendChild(teamEl);
+    primary.appendChild(yearEl);
+    caption.appendChild(primary);
+
+    const managerEl = document.createElement('div');
+    managerEl.className = 'photo-manager';
+    managerEl.textContent = managerName || '—';
+    caption.appendChild(managerEl);
+  } else {
+    const managerEl = document.createElement('span');
+    managerEl.className = 'photo-manager';
+    managerEl.textContent = managerName || '—';
+    primary.appendChild(managerEl);
+    primary.appendChild(yearEl);
+    caption.appendChild(primary);
   }
 
   card.appendChild(caption);

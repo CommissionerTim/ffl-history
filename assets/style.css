@@ -1,12 +1,15 @@
 :root {
-  --bg: #f7f7f5;
-  --panel: #ffffff;
-  --ink: #1b1d1f;
-  --muted: #6b7178;
-  --border: #e3e4e2;
-  --accent: #2f6f4f;
-  --accent-ink: #ffffff;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --bg: oklch(16% 0.02 250);
+  --panel: oklch(20% 0.02 250);
+  --surface: oklch(20% 0.02 250);
+  --surface-2: oklch(24% 0.02 250);
+  --ink: oklch(96% 0.005 250);
+  --muted: oklch(65% 0.02 250);
+  --border: oklch(29% 0.02 250);
+  --accent: oklch(85% 0.24 150);
+  --accent-ink: oklch(20% 0.05 150);
+  --accent-dim: oklch(28% 0.06 150);
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -19,42 +22,68 @@ body {
 }
 
 header.site-header {
-  background: var(--panel);
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   padding: 1rem 1.5rem;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1.5rem;
   flex-wrap: wrap;
 }
 
 header.site-header h1 {
-  font-size: 1.25rem;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  white-space: nowrap;
+}
+
+header.site-header h1::before {
+  content: "🏈";
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
 }
 
 nav.site-nav {
   display: flex;
-  gap: 1rem;
-  /* Add more <a> links here later (Hall of Fame, Maid Quarters, League
-     Rules) — they'll inherit this same styling automatically. */
+  gap: 0.25rem;
+  flex-wrap: wrap;
 }
 
 nav.site-nav a {
   color: var(--muted);
   text-decoration: none;
-  font-size: 0.95rem;
-  padding: 0.25rem 0;
-  border-bottom: 2px solid transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border-bottom: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 nav.site-nav a[aria-current="page"] {
-  color: var(--ink);
-  font-weight: 600;
-  border-bottom-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  background: var(--accent);
 }
 
-nav.site-nav a:hover { color: var(--ink); }
+nav.site-nav a:hover:not([aria-current="page"]) {
+  color: var(--ink);
+  background: var(--surface-2);
+}
 
 main {
   max-width: 1100px;
@@ -65,14 +94,17 @@ main {
 section.panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
 }
 
 section.panel h2 {
   margin-top: 0;
-  font-size: 1.05rem;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
 }
 
 .record-grid {
@@ -83,22 +115,25 @@ section.panel h2 {
 
 .record-card {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
-  background: #fbfbfa;
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface-2);
 }
 
 .record-card .label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  font-weight: 700;
   color: var(--muted);
 }
 
 .record-card .value {
-  font-size: 1.5rem;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-size: 1.6rem;
   font-weight: 700;
-  margin: 0.15rem 0;
+  color: var(--accent);
+  margin: 0.2rem 0;
 }
 
 .record-card .holders {
@@ -110,7 +145,7 @@ section.panel h2 {
 .photo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .photo-empty {
@@ -118,12 +153,17 @@ section.panel h2 {
   grid-column: 1 / -1;
 }
 
+.photo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
 .photo-frame {
   aspect-ratio: 2 / 3;
-  border-radius: 10px;
   overflow: hidden;
-  background: #eceae4;
-  border: 1px solid var(--border);
+  background: var(--surface-2);
   position: relative;
 }
 
@@ -150,33 +190,57 @@ section.panel h2 {
 .photo-card.photo-missing .photo-fallback { display: flex; }
 
 .photo-caption {
-  margin-top: 0.6rem;
-  text-align: center;
+  padding: 0.9rem 1.05rem 1.1rem 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.photo-year {
-  font-weight: 700;
-  font-size: 1rem;
-}
-
-.photo-manager {
+/* The primary caption line pairs whatever identifies the card (team name
+   when shown, otherwise the manager) with the year, e.g. "maidbait (2025)".
+   .photo-year and .photo-team/.photo-manager stay as separate elements with
+   plain text content (the sheet-driven values) — the "(" ")" around the
+   year is purely decorative, added via ::before/::after so it never ends
+   up inside anyone's actual text content. */
+.photo-primary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
   font-size: 0.95rem;
 }
 
-.photo-team {
-  font-size: 0.85rem;
-  color: var(--muted);
-  font-style: italic;
+/* Whichever element is the card's primary identifier — the team name when
+   one is shown (Hall of Fame), otherwise the manager (Maid Quarters) —
+   renders bold and full-brightness inside .photo-primary. */
+.photo-primary > .photo-team,
+.photo-primary > .photo-manager {
+  font-weight: 700;
+  color: var(--ink);
 }
 
-/* League Rules — embedded live via Google Docs' own read-only viewer, so
-   formatting (headings, bullets, bold) always matches the doc exactly. */
+.photo-primary .photo-year {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.photo-primary .photo-year::before { content: "("; }
+.photo-primary .photo-year::after { content: ")"; }
+
+/* The secondary caption line (manager name below the team name, Hall of
+   Fame only) sits outside .photo-primary and stays muted. */
+.photo-manager {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* League Rules */
 .doc-embed {
   width: 100%;
   height: 80vh;
   min-height: 500px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   background: #fff;
 }
 
@@ -187,8 +251,7 @@ section.panel h2 {
 
 .doc-fallback-link a { color: var(--accent); }
 
-/* Draft History — freeform, hand-entered writeups pulled live from the
-   sheet's "Draft History" tab (see draft-history.js), newest first. */
+/* Draft History */
 .draft-history-list {
   display: flex;
   flex-direction: column;
@@ -207,7 +270,9 @@ section.panel h2 {
 
 .draft-history-heading {
   margin: 0 0 0.5rem;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
   font-size: 1.1rem;
+  font-weight: 700;
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
@@ -216,13 +281,15 @@ section.panel h2 {
 
 .draft-history-location {
   font-size: 0.9rem;
-  font-weight: 400;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
   color: var(--muted);
 }
 
 .draft-history-recap {
   margin: 0;
   white-space: pre-line;
+  color: var(--ink);
 }
 
 .draft-history-empty {
@@ -246,8 +313,8 @@ section.panel h2 {
   display: inline-flex;
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 2px;
-  background: var(--bg);
+  padding: 3px;
+  background: var(--surface-2);
 }
 
 .segmented-option {
@@ -256,7 +323,7 @@ section.panel h2 {
   color: var(--muted);
   font-size: 0.85rem;
   font-weight: 600;
-  padding: 0.35rem 0.85rem;
+  padding: 0.4rem 0.9rem;
   border-radius: 999px;
   cursor: pointer;
 }
@@ -279,7 +346,7 @@ table {
 }
 
 th, td {
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.7rem;
   text-align: left;
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
@@ -289,17 +356,20 @@ th {
   cursor: pointer;
   user-select: none;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   position: sticky;
   top: 0;
   background: var(--panel);
   z-index: 2;
 }
 
-th.sorted { color: var(--ink); }
+th.sorted { color: var(--accent); }
 
-/* Freeze the leftmost (Manager) column on the career-stats table so it
-   stays in view while scrolling horizontally through its many columns. */
+td { font-family: 'Space Grotesk', 'Manrope', sans-serif; font-weight: 600; }
+
 #career-table th:first-child,
 #career-table td:first-child {
   position: sticky;
@@ -310,18 +380,13 @@ th.sorted { color: var(--ink); }
 }
 
 #career-table th:first-child {
-  z-index: 3; /* stays above both the sticky header row and the frozen column while scrolling in either direction */
+  z-index: 3;
 }
 
 #career-table tbody tr:hover td:first-child {
-  background: #f2f6f3; /* match the row-hover background so the frozen cell doesn't look out of place */
+  background: var(--surface-2);
 }
 
-/* Info ("ⓘ") icons: on column headers (Season/Career Stats) and on
-   All-Time Records cards (see makeInfoIcon in table.js, used by both). A
-   plain `title` attribute tooltip can't be resized or restyled, so this
-   builds its own hover/focus popup via data-tooltip + ::after instead --
-   letting it be a size that's actually comfortable to read. */
 .th-info {
   display: inline-block;
   margin-left: 0.3em;
@@ -343,14 +408,15 @@ th.sorted { color: var(--ink); }
   max-width: min(340px, 85vw);
   white-space: normal;
   text-align: left;
-  background: var(--ink);
-  color: #fff;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
   font-size: 0.85rem;
   font-weight: 400;
   line-height: 1.5;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.12s ease;
@@ -365,24 +431,31 @@ th.sorted { color: var(--ink); }
 
 td.num, th.num { text-align: right; }
 
-tbody tr:hover { background: #f2f6f3; }
+tbody tr:hover { background: var(--surface-2); }
 
 select#year-select {
   font-size: 1rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
   border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .status-banner {
   font-size: 0.9rem;
   padding: 0.6rem 0.9rem;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 1rem;
+  border: 1px solid var(--border);
 }
 
-.status-banner.loading { background: #eef2ff; color: #3b4b8a; }
-.status-banner.error { background: #fdecea; color: #a13327; }
+.status-banner.loading { background: var(--surface-2); color: var(--muted); }
+.status-banner.error {
+  background: oklch(28% 0.09 25);
+  color: oklch(90% 0.1 25);
+  border-color: oklch(40% 0.12 25);
+}
 
 /* Password gate */
 .auth-locked > *:not(.auth-overlay) { filter: blur(4px); pointer-events: none; }
@@ -390,7 +463,7 @@ select#year-select {
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(20, 22, 24, 0.55);
+  background: rgba(6, 7, 8, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -399,41 +472,79 @@ select#year-select {
 
 .auth-box {
   background: var(--panel);
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 2rem;
   width: min(320px, 90vw);
   text-align: center;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
-.auth-box h1 { font-size: 1.1rem; margin: 0 0 0.35rem; }
+.auth-box h1 {
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-size: 1.1rem;
+  margin: 0 0 0.35rem;
+}
 .auth-box p { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
 
 .auth-box input {
   width: 100%;
   font-size: 1rem;
-  padding: 0.55rem 0.7rem;
+  padding: 0.6rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 0.75rem;
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .auth-box button {
   width: 100%;
   font-size: 1rem;
-  padding: 0.55rem 0.7rem;
+  font-weight: 700;
+  padding: 0.6rem 0.75rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   background: var(--accent);
   color: var(--accent-ink);
   cursor: pointer;
 }
 
-.auth-box .auth-error { color: #a13327; margin-top: 0.6rem; margin-bottom: 0; }
+.auth-box .auth-error { color: oklch(78% 0.16 25); margin-top: 0.6rem; margin-bottom: 0; }
 
 footer.site-footer {
   text-align: center;
   color: var(--muted);
   font-size: 0.8rem;
   padding: 2rem 1rem;
+}
+
+/* Mobile: scrollable pill nav instead of wrapping, so the whole strip stays
+   reachable with one hand instead of eating vertical space. */
+@media (max-width: 640px) {
+  header.site-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+  }
+
+  nav.site-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  nav.site-nav::-webkit-scrollbar { display: none; }
+
+  nav.site-nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  main { padding: 1rem; }
+
+  section.panel { padding: 1rem; }
 }
