@@ -193,59 +193,124 @@ section.panel h2 {
   padding: 0.9rem 1.05rem 1.1rem 1.05rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.45rem;
 }
 
-/* The primary caption line pairs whatever identifies the card (team name
-   when shown, otherwise the manager) with the year, e.g. "maidbait (2025)".
-   .photo-year and .photo-team/.photo-manager stay as separate elements with
-   plain text content (the sheet-driven values) — the "(" ")" around the
-   year is purely decorative, added via ::before/::after so it never ends
-   up inside anyone's actual text content. */
+/* Primary line: manager name left-aligned, year as a pill right-aligned on
+   the same row, both vertically centered so the pill sits at the same
+   height as the name. */
 .photo-primary {
   display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  font-size: 0.95rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-/* Whichever element is the card's primary identifier — the team name when
-   one is shown (Hall of Fame), otherwise the manager (Maid Quarters) —
-   renders bold and full-brightness inside .photo-primary. */
-.photo-primary > .photo-team,
-.photo-primary > .photo-manager {
-  font-weight: 700;
+.photo-primary .photo-manager {
+  font-weight: 800;
+  font-size: 1.05rem;
   color: var(--ink);
 }
 
 .photo-primary .photo-year {
-  font-weight: 500;
-  font-size: 0.85rem;
-  color: var(--muted);
+  flex: 0 0 auto;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.photo-primary .photo-year::before { content: "("; }
-.photo-primary .photo-year::after { content: ")"; }
-
-/* The secondary caption line (manager name below the team name, Hall of
-   Fame only) sits outside .photo-primary and stays muted. */
-.photo-manager {
-  font-size: 0.85rem;
+/* Secondary line (Hall of Fame only — Maid Quarters has no team names):
+   the team name, muted and quoted. The quote marks are decorative, added
+   via ::before/::after so .photo-team's actual text content stays the
+   plain team name (what the tests, and anything else reading the DOM,
+   expect). */
+.photo-team {
+  font-size: 0.8rem;
   color: var(--muted);
+  font-style: italic;
 }
 
-/* League Rules */
-.doc-embed {
-  width: 100%;
-  height: 80vh;
-  min-height: 500px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #fff;
+.photo-team::before { content: "\201C"; }
+.photo-team::after { content: "\201D"; }
+
+/* League Rules — the doc's own text, reformatted client-side in the
+   site's own type/theme (see rules.js). No iframe, no Docs styling. */
+.rules-content {
+  max-width: 720px;
+}
+
+.rules-title {
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 0.6rem;
+}
+
+.rules-intro {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 0.4rem;
+}
+
+.rules-subheading {
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 2rem 0 0.7rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.rules-content > .rules-subheading:first-of-type {
+  margin-top: 1.5rem;
+  padding-top: 1.4rem;
+}
+
+.rules-body {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 1rem;
+}
+
+.rules-list {
+  margin: 0 0 1rem;
+  padding-left: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rules-list--nested {
+  margin: 0.5rem 0 0;
+}
+
+.rules-list li {
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* A single list item that only exists to introduce the sub-list nested
+   inside it (e.g. "The winner receives the following prizes:") reads as a
+   lead-in line, not a bullet — drop its marker and make it stand out a
+   little instead. */
+.rules-list-lead {
+  list-style: none;
+  margin-left: -1.3rem;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .doc-fallback-link {
-  margin-top: 0.75rem;
+  margin-top: 1.5rem;
   font-size: 0.85rem;
 }
 

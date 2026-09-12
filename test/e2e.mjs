@@ -57,6 +57,18 @@ await page.route('https://docs.google.com/spreadsheets/**', async (route) => {
   }
 });
 
+// Mock the Google Doc export endpoint rules.js fetches with a real, saved
+// copy of the actual live doc's export?format=html output (test/fixtures/
+// rules-doc.html), so the parser in rules.js gets exercised against real
+// content, not a hand-written stand-in.
+await page.route('https://docs.google.com/document/**/export**', async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: fs.readFileSync(path.join(fixturesDir, 'rules-doc.html')),
+  });
+});
+
 page.on('console', (msg) => {
   if (msg.type() === 'error') console.log('[browser console error]', msg.text());
 });
@@ -375,6 +387,19 @@ assert(
 );
 assert(worstZScoreIndex === bestZScoreIndex + 1, '"Lowest Single-Season Z-Score" column sits immediately after "Highest Single-Season Z-Score"');
 assert(avgZScoreIndex === worstZScoreIndex + 1, '"All-Time Average Z-Score" column sits immediately after "Lowest Single-Season Z-Score"');
+
+// NEW career-stats columns (this round): All-Time Average Points Against
+// Z-Score (right after All-Time Average Z-Score) and Average Luck (right
+// after Unluckiest Season). Expected values cross-checked independently in
+// pandas (see independent_check.py).
+const avgPAZScoreIndex = await headerIndex('#career-table', 'All-Time Average Points Against Z-Score');
+const avgLuckIndexIndex = await headerIndex('#career-table', 'Average Luck');
+assert(avgPAZScoreIndex === avgZScoreIndex + 1, '"All-Time Average Points Against Z-Score" column sits immediately after "All-Time Average Z-Score"');
+assert(avgLuckIndexIndex === unluckiestIndex + 1, '"Average Luck" column sits immediately after "Unluckiest Season"');
+assert(timRow && timRow[avgPAZScoreIndex] === '+0.11', `Tim all-time average points-against z-score = +0.11 (got ${timRow?.[avgPAZScoreIndex]})`);
+assert(timRow && timRow[avgLuckIndexIndex] === '-0.64', `Tim average luck = -0.64 (got ${timRow?.[avgLuckIndexIndex]})`);
+assert(carterRow && carterRow[avgPAZScoreIndex] === '+0.52', `Carter all-time average points-against z-score = +0.52 (got ${carterRow?.[avgPAZScoreIndex]})`);
+assert(carterRow && carterRow[avgLuckIndexIndex] === '-2.50', `Carter average luck = -2.50 (got ${carterRow?.[avgLuckIndexIndex]})`);
 assert(timRow && timRow[pctPlayoffIndex] === '72.7%', `Tim % of playoff seasons = 72.7% (got ${timRow?.[pctPlayoffIndex]})`);
 assert(timRow && timRow[worstZScoreIndex] === '-1.18 (2024)', `Tim lowest single-season z-score = -1.18 (2024) (got ${timRow?.[worstZScoreIndex]})`);
 assert(timRow && timRow[avgZScoreIndex] === '+0.74', `Tim all-time average z-score = +0.74 (got ${timRow?.[avgZScoreIndex]})`);
@@ -397,9 +422,10 @@ assert(timRow && timRow[careerRagequitsIndex] === '0', `Tim (never ragequit) car
 assert(timRow && timRow[bestRagequitsIndex] === '0 (2015)', `Tim most ragequits in a season = 0 (2015, earliest year tiebreak) (got ${timRow?.[bestRagequitsIndex]})`);
 
 // Hover-tooltip icons: Z-score (best+worst), Luckiest/Unluckiest, avg Z-score,
-// % Playoff Seasons, plus (this round) Playoff W/L/Win%.
+// % Playoff Seasons, Playoff W/L/Win%, plus (this round) avg Points-Against
+// Z-score and Average Luck.
 const careerTooltips = await page.$$eval('#career-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));
-assert(careerTooltips.length === 9, `career table has 9 tooltip icons (got ${careerTooltips.length})`);
+assert(careerTooltips.length === 11, `career table has 11 tooltip icons (got ${careerTooltips.length})`);
 assert(careerTooltips.every((t) => t.length > 20), 'career table tooltips carry real explainer text, not empty strings');
 
 // Sorting: click "Championships" header, confirm Tim (3) sorts to top in descending order.
@@ -504,6 +530,18 @@ assert(timRow2025 && timRow2025[zScoreIdx] === '+2.02', `Tim 2025 Z-score = +2.0
 assert(timRow2025 && timRow2025[pythagIdx] === '67.1%', `Tim 2025 Pythagorean win% = 67.1% (got ${timRow2025?.[pythagIdx]})`);
 assert(timRow2025 && timRow2025[overUnderIdx] === '+9.8%', `Tim 2025 win% over/under Pythagorean = +9.8% (got ${timRow2025?.[overUnderIdx]})`);
 
+// NEW (this round): per-season "Luck" column (previously only surfaced as
+// Luckiest/Unluckiest Season on Career Stats). Expected values cross-checked
+// independently in pandas (see independent_check.py).
+const luckColIdx = await headerIndex('#season-table', 'Luck');
+const eriRow2025 = await page.$$eval('#season-table tbody tr', (rows) => {
+  const r = rows.find((tr) => tr.children[0].textContent === 'Eri');
+  return r ? [...r.children].map((td) => td.textContent) : null;
+});
+assert(luckColIdx !== -1, '"Luck" column header exists on Season Stats');
+assert(timRow2025 && timRow2025[luckColIdx] === '0', `Tim 2025 luck = 0 (got ${timRow2025?.[luckColIdx]})`);
+assert(eriRow2025 && eriRow2025[luckColIdx] === '-4', `Eri 2025 luck = -4 (got ${eriRow2025?.[luckColIdx]})`);
+
 // NEW (this round): raw Chat Ragequits passthrough column on Season Stats.
 const ragequitsIdx = await headerIndex('#season-table', 'Chat Ragequits');
 const benRow2025 = await page.$$eval('#season-table tbody tr', (rows) => {
@@ -516,7 +554,7 @@ assert(timRow2025 && timRow2025[ragequitsIdx] === '0', `Tim 2025 Chat Ragequits 
 
 // Hover-tooltip icons exist with real plain-language explainer text.
 const seasonTooltips = await page.$$eval('#season-table thead .th-info', (els) => els.map((el) => el.dataset.tooltip));
-assert(seasonTooltips.length === 3, `season table has 3 tooltip icons: Z-score, Pythagorean win%, win% +/- Pythagorean (got ${seasonTooltips.length})`);
+assert(seasonTooltips.length === 4, `season table has 4 tooltip icons: Z-score, Luck, Pythagorean win%, win% +/- Pythagorean (got ${seasonTooltips.length})`);
 assert(seasonTooltips.every((t) => t.length > 20), 'season table tooltips carry real explainer text, not empty strings');
 
 // Switch to a year with blank Highest Single Week Score (2018) and confirm it renders as "—", not "0.00".
@@ -566,6 +604,25 @@ await page.waitForTimeout(200);
 const allMissing = await page.$$eval('.photo-card', (cards) => cards.every((c) => c.classList.contains('photo-missing')));
 assert(allMissing, 'cards fall back to "photo coming soon" when the image 404s, instead of a broken-image icon');
 
+// NEW (this round): pill-caption layout — manager name and year share one
+// row (".photo-primary"), with the year pill as the row's second child; the
+// team name (Hall of Fame only) is a separate line below it.
+const captionStructure = await page.$eval('.photo-card', (card) => {
+  const primary = card.querySelector('.photo-primary');
+  return {
+    hasPrimary: !!primary,
+    primaryChildCount: primary?.children.length,
+    firstChildClass: primary?.children[0]?.className,
+    secondChildClass: primary?.children[1]?.className,
+    teamIsSiblingOfPrimary: card.querySelector('.photo-team')?.parentElement === card.querySelector('.photo-caption'),
+  };
+});
+assert(captionStructure.hasPrimary, 'photo card has a .photo-primary row');
+assert(captionStructure.primaryChildCount === 2, `.photo-primary contains exactly manager + year (got ${captionStructure.primaryChildCount} children)`);
+assert(captionStructure.firstChildClass === 'photo-manager', `.photo-primary's first child is the manager name (got ${captionStructure.firstChildClass})`);
+assert(captionStructure.secondChildClass === 'photo-year', `.photo-primary's second child is the year pill (got ${captionStructure.secondChildClass})`);
+assert(captionStructure.teamIsSiblingOfPrimary, '.photo-team sits alongside .photo-primary as its own line, not inside it');
+
 // ---- maid-quarters.html: entries render with year + manager, no team name ----
 await page.goto(`${baseUrl}/maid-quarters.html`);
 await page.waitForSelector('.photo-card');
@@ -610,22 +667,66 @@ assert(entry2019?.recap === 'Extra whitespace around every field should be trimm
 const entry2027 = draftEntries.find((e) => e.year === '2027');
 assert(entry2027?.location === null, `an entry with a blank Location renders no location span at all (got ${JSON.stringify(entry2027?.location)})`);
 
-// ---- rules.html: still gated, embeds the live Google Doc ----
-// (docs.google.com itself isn't reachable from this sandbox, so this only
-// checks that the gate + the iframe wiring are correct, not the doc's
-// actual rendered content — that was checked separately, live, in a real
-// browser on Tim's machine before this shipped.)
+// ---- rules.html: still gated, fetches + reformats the live Google Doc in
+// the site's own style (no iframe). The docs.google.com export endpoint is
+// mocked above with a real, saved copy of the actual doc's exported HTML
+// (test/fixtures/rules-doc.html), so this exercises rules.js's real parser
+// against real content, not a hand-written stand-in — the fixture was
+// captured live, in a real browser, from the actual doc before this shipped.
 await page.goto(`${baseUrl}/rules.html`);
 const rulesGateVisible = await page.$('.auth-box');
 assert(rulesGateVisible === null, 'rules.html does not re-prompt within the same session (still password-gated)');
-await page.waitForSelector('iframe.doc-embed');
-const iframeSrc = await page.$eval('iframe.doc-embed', (el) => el.getAttribute('src'));
+
+await page.waitForSelector('#doc-content .rules-title');
+const noIframe = await page.$('iframe.doc-embed');
+assert(noIframe === null, 'rules.html no longer embeds the doc via iframe');
+
+const rulesTitle = await page.$eval('#doc-content .rules-title', (el) => el.textContent);
+assert(rulesTitle === 'OUR FANTASY FOOTBALL CUSTOM LEAGUE RULES', `doc title renders correctly (got ${JSON.stringify(rulesTitle)})`);
+
+const rulesSubheadings = await page.$$eval('#doc-content .rules-subheading', (els) => els.map((el) => el.textContent));
 assert(
-  iframeSrc === 'https://docs.google.com/document/d/1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI/preview',
-  `rules.html embeds the correct Doc preview URL (got ${iframeSrc})`
+  rulesSubheadings.length === 9,
+  `all 9 real sections render as subheadings (got ${rulesSubheadings.length}: ${JSON.stringify(rulesSubheadings)})`
 );
+assert(rulesSubheadings[0] === 'Rule Changes:', `first section is "Rule Changes:" (got ${JSON.stringify(rulesSubheadings[0])})`);
+assert(
+  rulesSubheadings[rulesSubheadings.length - 1] === 'FOR ANY CONTROVERSIAL MATTERS NOT COVERED ABOVE:',
+  `last section (its own all-caps heading, same handling as the Title Case ones) renders correctly (got ${JSON.stringify(rulesSubheadings[rulesSubheadings.length - 1])})`
+);
+
+// Nesting: Playoffs' "Week 15/16/17" sub-headers each carry their own
+// matchup sub-list (Docs emits these as flat sibling <ul>s keyed by a
+// shared list-id — see rules.js's buildList()).
+const week15Matchups = await page.$eval('#doc-content', (container) => {
+  const allLis = [...container.querySelectorAll('.rules-list li')];
+  // Match on the li's own direct text node only, not its full (nested-list-
+  // inclusive) textContent, since this li has a nested <ul> of its own.
+  const week15 = allLis.find((li) => li.childNodes[0]?.nodeValue === 'Week 15: Play-in');
+  const nested = week15?.querySelector(':scope > ul');
+  return nested ? [...nested.children].map((li) => li.textContent) : null;
+});
+assert(week15Matchups?.length === 3, `Week 15 renders its own nested 3-item matchup list (got ${JSON.stringify(week15Matchups)})`);
+assert(week15Matchups?.[0]?.startsWith('1 vs. 2'), `Week 15's first matchup is correct (got ${JSON.stringify(week15Matchups?.[0])})`);
+
+// Lead-in bullets (a sole list item that only exists to introduce its own
+// nested sub-list) get the no-marker "lead" treatment.
+const leadTexts = await page.$$eval('.rules-list-lead', (els) => els.map((el) => el.childNodes[0].textContent));
+assert(leadTexts.includes('The winner receives the following prizes:'), 'the Winning Prizes lead-in line is treated as a lead, not a bullet');
+assert(leadTexts.includes('We have a custom play-in system:'), 'the Playoffs lead-in line is treated as a lead, not a bullet');
+
+// On Draft's 10-item draft-order list renders in full, in document order.
+const draftOrderItems = await page.$$eval('#doc-content .rules-subheading', (headings) => {
+  const onDraft = headings.find((h) => h.textContent === 'On Draft:');
+  const list = onDraft?.nextElementSibling;
+  return list ? [...list.querySelectorAll('li')].filter((li) => !li.classList.contains('rules-list-lead')).map((li) => li.textContent) : null;
+});
+assert(draftOrderItems?.length === 10, `On Draft's order list has all 10 real items (got ${draftOrderItems?.length})`);
+assert(draftOrderItems?.[0] === '5th place (first person out of the playoffs): #1 choice', `On Draft's first item is correct (got ${JSON.stringify(draftOrderItems?.[0])})`);
+assert(draftOrderItems?.[9] === '1st place: #10', `On Draft's last item is correct (got ${JSON.stringify(draftOrderItems?.[9])})`);
+
 const fallbackHref = await page.$eval('.doc-fallback-link a', (el) => el.getAttribute('href'));
-assert(fallbackHref?.includes('1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI'), 'fallback "open doc directly" link points at the right doc');
+assert(fallbackHref?.includes('1LqGI0yQttBau_vQETBBbQpTDmGEJHB8Crg79C_5XgkI'), 'fallback "view source doc" link points at the right doc');
 
 await browser.close();
 server.close();

@@ -289,6 +289,32 @@ export function pointsScoredZScoresForYear(yearRows) {
 }
 
 /**
+ * Z-score of each manager's points against that season's own league
+ * mean/standard deviation (population std) — same shape as
+ * pointsScoredZScoresForYear, just for Points Against instead of Points
+ * Scored. Unlike Points Scored (required for a row to exist at all, see
+ * normalizeRow), Points Against can be missing on an otherwise-valid row,
+ * so rows without it are left out of both the mean/std calculation and the
+ * returned map, rather than treated as 0.
+ * @returns {Map<string, number>} managerKey -> z-score
+ */
+export function pointsAgainstZScoresForYear(yearRows) {
+  const values = yearRows.map((r) => r.pointsAgainst).filter((v) => v !== null);
+  const zScores = new Map();
+  if (values.length === 0) return zScores;
+
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  const std = Math.sqrt(variance);
+
+  for (const r of yearRows) {
+    if (r.pointsAgainst === null) continue;
+    zScores.set(r.managerKey, std > EPS ? (r.pointsAgainst - mean) / std : 0);
+  }
+  return zScores;
+}
+
+/**
  * Luck Index for one year's rows: that manager's Points Scored Rank minus
  * their Final Standing. Positive = finished better than their scoring
  * alone would predict (lucky); negative = finished worse (unlucky).
@@ -322,6 +348,7 @@ export function aggregateCareers(seasons) {
   const lastPlaceByYear = new Map();
   const regLeaderKeyByYear = new Map();
   const zScoreByYear = new Map(); // year -> Map<managerKey, zscore>
+  const paZScoreByYear = new Map(); // year -> Map<managerKey, points-against zscore>
   const luckByYear = new Map(); // year -> Map<managerKey, luckIndex>
   const bottomTwoByYear = new Map(); // year -> Set<finalStanding> ("Maid Bowl" standings)
   for (const { year, rows } of seasons) {
@@ -329,6 +356,7 @@ export function aggregateCareers(seasons) {
     const leader = regSeasonLeaderForYear(rows);
     regLeaderKeyByYear.set(year, leader ? leader.managerKey : null);
     zScoreByYear.set(year, pointsScoredZScoresForYear(rows));
+    paZScoreByYear.set(year, pointsAgainstZScoresForYear(rows));
     luckByYear.set(year, luckIndexForYear(rows));
     bottomTwoByYear.set(year, rows.length ? bottomTwoStandingsForYear(rows) : new Set());
   }
@@ -377,7 +405,9 @@ export function aggregateCareers(seasons) {
     let luckiestSeason = null; // { year, value } - max Luck Index
     let unluckiestSeason = null; // { year, value } - min Luck Index
     let bestRagequitsSeason = null; // { year, value } - most Chat Ragequits in a single season
-    let zScoreSum = 0, zScoreCount = 0; // for career-average z-score
+    let zScoreSum = 0, zScoreCount = 0; // for career-average z-score (points scored)
+    let paZScoreSum = 0, paZScoreCount = 0; // for career-average points-against z-score
+    let luckSum = 0, luckCount = 0; // for career-average Luck Index
     let playoffSeasonCount = 0; // seasons finishing #1-4 ("made playoffs")
     let maidBowlAppearances = 0; // seasons finishing in the bottom two
 
@@ -482,6 +512,12 @@ export function aggregateCareers(seasons) {
         zScoreCount += 1;
       }
 
+      const paZScore = paZScoreByYear.get(r.year)?.get(managerKey);
+      if (paZScore !== undefined) {
+        paZScoreSum += paZScore;
+        paZScoreCount += 1;
+      }
+
       const luck = luckByYear.get(r.year)?.get(managerKey);
       if (
         luck !== undefined &&
@@ -498,6 +534,10 @@ export function aggregateCareers(seasons) {
           (Math.abs(luck - unluckiestSeason.value) < EPS && r.year < unluckiestSeason.year))
       ) {
         unluckiestSeason = { year: r.year, value: luck };
+      }
+      if (luck !== undefined) {
+        luckSum += luck;
+        luckCount += 1;
       }
     }
 
@@ -527,8 +567,10 @@ export function aggregateCareers(seasons) {
       bestZScoreSeason,
       worstZScoreSeason,
       avgZScore: zScoreCount > 0 ? zScoreSum / zScoreCount : null,
+      avgPAZScore: paZScoreCount > 0 ? paZScoreSum / paZScoreCount : null,
       luckiestSeason,
       unluckiestSeason,
+      avgLuckIndex: luckCount > 0 ? luckSum / luckCount : null,
       pctPlayoffSeasons: playoffSeasonCount / rows.length,
       maidBowlAppearances,
       careerChatRagequits: ragequitsSum,

@@ -68,6 +68,15 @@ all_rows["ZScore"] = all_rows.groupby("Year", group_keys=False).apply(zscore_gro
 all_rows["PointsScoredRank"] = all_rows.groupby("Year")["Points Scored"].rank(ascending=False, method="min").astype(int)
 all_rows["LuckIndex"] = all_rows["PointsScoredRank"] - all_rows["Final Standing"]
 
+def pa_zscore_group(g):
+    mean = g["Points Against"].mean()
+    std = g["Points Against"].std(ddof=0)  # population std, same convention as ZScore above
+    if pd.isna(std) or std == 0:
+        return pd.Series(0.0, index=g.index)
+    return (g["Points Against"] - mean) / std
+
+all_rows["PAZScore"] = all_rows.groupby("Year", group_keys=False).apply(pa_zscore_group)
+
 # Career aggregation
 careers = all_rows.groupby("ManagerKey").agg(
     seasonsPlayed=("Year", "count"),
@@ -85,6 +94,8 @@ careers = all_rows.groupby("ManagerKey").agg(
     avgMoves=("Moves", "mean"),
     careerChatRagequits=("Chat Ragequits", "sum"),
     avgRagequits=("Chat Ragequits", "mean"),
+    avgPAZScore=("PAZScore", "mean"),
+    avgLuckIndex=("LuckIndex", "mean"),
 ).reset_index()
 careers["regWinPct"] = (careers["regW"] + 0.5 * careers["regT"]) / (careers["regW"] + careers["regL"] + careers["regT"])
 careers["playoffDenom"] = careers["playoffW"] + careers["playoffL"]
@@ -130,6 +141,8 @@ for _, row in careers.iterrows():
         ("regWinPct", row["regWinPct"], js["regWinPct"]),
         ("careerChatRagequits", row["careerChatRagequits"], js["careerChatRagequits"]),
         ("avgRagequits", row["avgRagequits"], js["avgRagequits"]),
+        ("avgPAZScore", row["avgPAZScore"], js["avgPAZScore"]),
+        ("avgLuckIndex", row["avgLuckIndex"], js["avgLuckIndex"]),
     ]:
         if abs(py_val - js_val) > 1e-6:
             print(f"MISMATCH {key}.{name}: pandas={py_val} js={js_val}")
@@ -221,6 +234,9 @@ for _, row in all_rows.iterrows():
         row_mismatches += 1
     if abs(row["ZScore"] - js["zScore"]) > 1e-6:
         print(f"MISMATCH {key}.zScore: pandas={row['ZScore']} js={js['zScore']}")
+        row_mismatches += 1
+    if abs(row["PAZScore"] - js["paZScore"]) > 1e-6:
+        print(f"MISMATCH {key}.paZScore: pandas={row['PAZScore']} js={js['paZScore']}")
         row_mismatches += 1
     if int(row["PointsScoredRank"]) != js["pointsScoredRank"]:
         print(f"MISMATCH {key}.pointsScoredRank: pandas={row['PointsScoredRank']} js={js['pointsScoredRank']}")

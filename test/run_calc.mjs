@@ -15,9 +15,10 @@ import {
   buildLeaderboard,
   pythagoreanWinPct,
   pointsScoredZScoresForYear,
+  pointsAgainstZScoresForYear,
   pointsScoredRanksForYear,
   luckIndexForYear,
-} from '../assets/calc.js';
+} from '../site/assets/calc.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, 'fixtures');
@@ -46,6 +47,7 @@ const { careers, recordBook } = buildLeaderboard(seasons);
 const seasonStats = [];
 for (const { year, rows } of seasons) {
   const zScores = pointsScoredZScoresForYear(rows);
+  const paZScores = pointsAgainstZScoresForYear(rows);
   const ranks = pointsScoredRanksForYear(rows);
   const luck = luckIndexForYear(rows);
   for (const r of rows) {
@@ -55,6 +57,7 @@ for (const { year, rows } of seasons) {
       managerKey: r.managerKey,
       pythagWinPct: pythagoreanWinPct(r),
       zScore: zScores.get(r.managerKey) ?? null,
+      paZScore: paZScores.get(r.managerKey) ?? null,
       pointsScoredRank: ranks.get(r.managerKey) ?? null,
       luckIndex: luck.get(r.managerKey) ?? null,
     });

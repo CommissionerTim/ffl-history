@@ -200,6 +200,11 @@ function renderCareerTable(careers, currentSort, onSortChange) {
       tooltip: "The average of this manager's single-season Z-scores across every season they've played — a career-long view of how they've scored relative to the league average each year.",
     },
     {
+      key: 'avgPAZScore', label: 'All-Time Average Points Against Z-Score', numeric: true,
+      get: (r) => r.avgPAZScore, format: (r) => signedNum(r.avgPAZScore, 2),
+      tooltip: "The average of this manager's single-season points-against Z-scores across every season they've played — a career-long view of how many standard deviations above or below league-average points allowed they've given up each year.",
+    },
+    {
       key: 'luckiestSeason', label: 'Luckiest Season', numeric: true,
       get: (r) => r.luckiestSeason ? r.luckiestSeason.value : null,
       format: (r) => r.luckiestSeason ? `${signedInt(r.luckiestSeason.value)} (${r.luckiestSeason.year})` : '—',
@@ -210,6 +215,11 @@ function renderCareerTable(careers, currentSort, onSortChange) {
       get: (r) => r.unluckiestSeason ? r.unluckiestSeason.value : null,
       format: (r) => r.unluckiestSeason ? `${signedInt(r.unluckiestSeason.value)} (${r.unluckiestSeason.year})` : '—',
       tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Negative = finished worse than their scoring alone would predict (unlucky). This shows the manager's single unluckiest season.",
+    },
+    {
+      key: 'avgLuckIndex', label: 'Average Luck', numeric: true,
+      get: (r) => r.avgLuckIndex, format: (r) => signedNum(r.avgLuckIndex, 2),
+      tooltip: "Luck Index = that season's Points-Scored Rank minus Final Standing. Positive = finished better than their scoring alone would predict (lucky); negative = finished worse (unlucky). This is the average across every season the manager has played.",
     },
     {
       key: 'careerChatRagequits', label: 'Chat Ragequits', numeric: true,

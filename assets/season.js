@@ -1,7 +1,7 @@
 import { SHEET_ID, YEARS, PASSWORD_HASH, SITE_TITLE } from '../config.js';
 import { requireAuth } from './auth.js';
 import { loadAllSeasons } from './data.js';
-import { regSeasonWinPct, playoffWinPct, pointsPerGame, pythagoreanWinPct, pointsScoredZScoresForYear } from './calc.js';
+import { regSeasonWinPct, playoffWinPct, pointsPerGame, pythagoreanWinPct, pointsScoredZScoresForYear, luckIndexForYear } from './calc.js';
 import { renderSortableTable } from './table.js';
 
 document.title = SITE_TITLE + ' — Season Stats';
@@ -21,6 +21,7 @@ const signedPct = (v, digits = 1) => {
   const s = Math.abs(rounded).toFixed(digits) + '%';
   return rounded > 0 ? '+' + s : rounded < 0 ? '-' + s : s;
 };
+const signedInt = (v) => (v === null || v === undefined ? '—' : v > 0 ? '+' + v : String(v));
 
 let seasonsByYear = new Map();
 
@@ -72,6 +73,7 @@ function renderYear(year) {
   }
 
   const zScores = pointsScoredZScoresForYear(season.rows);
+  const luck = luckIndexForYear(season.rows);
   const rows = season.rows.map((r) => {
     const regWinPct = regSeasonWinPct(r);
     const pythagWinPct = pythagoreanWinPct(r);
@@ -81,6 +83,7 @@ function renderYear(year) {
       playoffWinPct: playoffWinPct(r),
       ppg: pointsPerGame(r),
       zScore: zScores.get(r.managerKey) ?? null,
+      luck: luck.get(r.managerKey) ?? null,
       pythagWinPct,
       winPctOverUnder: regWinPct !== null && pythagWinPct !== null ? regWinPct - pythagWinPct : null,
     };
@@ -109,6 +112,11 @@ function renderYear(year) {
       key: 'zScore', label: 'Z-Score (Points)', numeric: true,
       get: (r) => r.zScore, format: (r) => signedNum(r.zScore, 2),
       tooltip: "How many standard deviations above or below that season's league-average points scored this manager was. 0 = exactly average; positive = above average; negative = below average.",
+    },
+    {
+      key: 'luck', label: 'Luck', numeric: true,
+      get: (r) => r.luck, format: (r) => signedInt(r.luck),
+      tooltip: "Luck Index = this season's Points-Scored Rank minus Final Standing. Positive = finished better than their scoring alone would predict (lucky); negative = finished worse (unlucky).",
     },
     {
       key: 'pythagWinPct', label: 'Pythagorean Win%', numeric: true,
