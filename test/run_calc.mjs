@@ -18,6 +18,8 @@ import {
   pointsAgainstZScoresForYear,
   pointsScoredRanksForYear,
   luckIndexForYear,
+  parseHallOfFameLineups,
+  championshipLineupAppearances,
 } from '../site/assets/calc.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -97,6 +99,18 @@ const draftHistory = fs.existsSync(draftHistoryFixture)
     )
   : [];
 
-const out = { seasonsLoaded: years, careers, recordBook, seasonStats, otherRecords, draftHistory };
+// "Hall of Fame" tab (hand-maintained lineup detail, transposed: one column
+// per year) — parsed the same headerless way as Other Records/Draft History
+// above, then run through calc.js's own lineup-appearance stat so it can be
+// cross-checked independently (see independent_check.py).
+const hallOfFameFixture = path.join(fixturesDir, 'Hall of Fame.csv');
+const hallOfFameLineupsMap = fs.existsSync(hallOfFameFixture)
+  ? parseHallOfFameLineups(Papa.parse(fs.readFileSync(hallOfFameFixture, 'utf8'), { header: false, skipEmptyLines: true }).data)
+  : new Map();
+// JSON has no Map type -- serialize as a plain { "2015": [...], ... } object, sorted by year.
+const hallOfFameLineups = Object.fromEntries([...hallOfFameLineupsMap.entries()].sort((a, b) => a[0] - b[0]));
+const lineupAppearances = championshipLineupAppearances(hallOfFameLineupsMap);
+
+const out = { seasonsLoaded: years, careers, recordBook, seasonStats, otherRecords, draftHistory, hallOfFameLineups, lineupAppearances };
 fs.writeFileSync(path.join(__dirname, 'calc_output.json'), JSON.stringify(out, null, 2));
 console.log(JSON.stringify(out, null, 2));

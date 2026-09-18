@@ -89,191 +89,154 @@ await page.click('.auth-box button');
 await page.waitForSelector('.auth-box', { state: 'detached' });
 assert(true, 'correct password removes the gate');
 
-await page.waitForSelector('.record-card');
-const noCareerTableOnIndex = await page.$('#career-table');
-assert(noCareerTableOnIndex === null, 'index.html no longer has a #career-table (it moved to career-stats.html)');
+// ---- index.html is now the Hall of Fame page (site homepage) ----
+assert((await page.title()).includes('Hall of Fame'), 'index.html title includes "Hall of Fame"');
+const homeNavText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
+assert(
+  homeNavText.join('|') ===
+    ['Hall of Fame', 'Career Stats', 'Season Stats', 'All-Time Records', 'League Rules', 'Draft History', 'Maid Quarters'].join('|'),
+  `nav is in the requested order (got ${homeNavText.join(', ')})`
+);
+const homeAriaCurrent = await page.$eval('nav.site-nav a[aria-current="page"]', (a) => a.textContent);
+assert(homeAriaCurrent === 'Hall of Fame', `"Hall of Fame" nav link is marked aria-current on index.html (got ${homeAriaCurrent})`);
 
-const recordCards = await page.$$eval('.record-card', (cards) =>
-  cards.map((c) => {
-    const labelEl = c.querySelector('.label');
-    const infoEl = labelEl.querySelector('.th-info');
-    // The label div's first child is always the plain label text node --
-    // a tooltip icon (if any) is a separate <span> appended after it, so
-    // this excludes the icon glyph ("ⓘ") from the label text itself.
-    const label = (labelEl.childNodes[0]?.nodeValue ?? labelEl.textContent).trim();
-    return {
-      label,
-      value: c.querySelector('.value').textContent,
-      holders: c.querySelector('.holders').textContent,
-      tooltip: infoEl ? infoEl.dataset.tooltip : null,
-    };
-  })
+await page.waitForSelector('.photo-card');
+const hofCards = await page.$$eval('.photo-card', (cards) =>
+  cards.map((c) => ({
+    year: c.querySelector('.photo-year')?.textContent,
+    manager: c.querySelector('.photo-manager')?.textContent,
+    team: c.querySelector('.photo-team')?.textContent,
+    missing: c.classList.contains('photo-missing'),
+  }))
 );
-console.log(recordCards);
+console.log('Hall of Fame cards:', hofCards);
+assert(hofCards.length === 11, `Hall of Fame shows all 11 years (got ${hofCards.length})`);
+assert(hofCards[0].year === '2025' && hofCards[0].manager === 'Tim', `2025 champion is Tim (got ${hofCards[0]?.manager})`);
 assert(
-  recordCards.find((c) => c.label.includes('Highest single-week'))?.value === '227.84',
-  'highest single-week score = 227.84'
+  hofCards.find((c) => c.year === '2015')?.manager === 'Marisa',
+  `2015 champion is Marisa (got ${hofCards.find((c) => c.year === '2015')?.manager})`
 );
 assert(
-  recordCards.find((c) => c.label.includes('Highest single-week'))?.holders.includes('Tim (2023)'),
-  'highest single-week score holder = Tim (2023)'
+  hofCards.find((c) => c.year === '2016')?.manager === 'Ethan',
+  `2016 champion is Ethan (got ${hofCards.find((c) => c.year === '2016')?.manager})`
 );
+// Team names come from photo-pages-data.js (parsed from each photo's filename), shown alongside the manager.
+assert(hofCards[0].team === 'maidbait', `2025 team name is "maidbait" (got ${hofCards[0].team})`);
 assert(
-  recordCards.find((c) => c.label.includes('Most championships'))?.value === '3',
-  'most championships = 3'
+  hofCards.find((c) => c.year === '2015')?.team === 'Waiver Wired',
+  `2015 team name is "Waiver Wired" (got ${hofCards.find((c) => c.year === '2015')?.team})`
 );
+// No real photos exist in this test fixture set — every card should fall back gracefully.
+await page.waitForTimeout(200);
+const allMissing = await page.$$eval('.photo-card', (cards) => cards.every((c) => c.classList.contains('photo-missing')));
+assert(allMissing, 'cards fall back to "photo coming soon" when the image 404s, instead of a broken-image icon');
+
+// Pill-caption layout — manager name and year share one row (".photo-primary"),
+// with the year pill as the row's second child; the team name (Hall of Fame
+// only) is a separate line below it.
+const captionStructure = await page.$eval('.photo-card', (card) => {
+  const primary = card.querySelector('.photo-primary');
+  return {
+    hasPrimary: !!primary,
+    primaryChildCount: primary?.children.length,
+    firstChildClass: primary?.children[0]?.className,
+    secondChildClass: primary?.children[1]?.className,
+    teamIsSiblingOfPrimary: card.querySelector('.photo-team')?.parentElement === card.querySelector('.photo-caption'),
+  };
+});
+assert(captionStructure.hasPrimary, 'photo card has a .photo-primary row');
+assert(captionStructure.primaryChildCount === 2, `.photo-primary contains exactly manager + year (got ${captionStructure.primaryChildCount} children)`);
+assert(captionStructure.firstChildClass === 'photo-manager', `.photo-primary's first child is the manager name (got ${captionStructure.firstChildClass})`);
+assert(captionStructure.secondChildClass === 'photo-year', `.photo-primary's second child is the year pill (got ${captionStructure.secondChildClass})`);
+assert(captionStructure.teamIsSiblingOfPrimary, '.photo-team sits alongside .photo-primary as its own line, not inside it');
+
+// NEW (this round): expandable "Starting Lineup" section on each Hall of Fame
+// card, sourced from the "Hall of Fame" sheet tab (test/fixtures/Hall of
+// Fame.csv — real captured sheet data, same quirks and all). Every one of
+// the 11 fixture years has lineup data, so every card should get a toggle.
+const lineupToggleCount = await page.$$eval('.lineup-toggle', (els) => els.length);
+assert(lineupToggleCount === 11, `all 11 Hall of Fame cards have a "Starting Lineup" toggle (got ${lineupToggleCount})`);
+
+const toggleInitialState = await page.$eval('.lineup-toggle', (el) => ({
+  ariaExpanded: el.getAttribute('aria-expanded'),
+  panelHidden: el.nextElementSibling.hidden,
+}));
 assert(
-  recordCards.find((c) => c.label === 'Most Regular Season Wins')?.value === '80',
-  'most regular season wins = 80'
-);
-assert(
-  recordCards.find((c) => c.label === 'Most Regular Season Wins')?.holders.includes('Marisa'),
-  'most regular season wins holder = Marisa'
-);
-assert(
-  recordCards.find((c) => c.label.includes('#1 regular-season'))?.value === '4',
-  'most #1 regular-season finishes = 4'
-);
-assert(
-  recordCards.map((c) => c.label).join('|') ===
-    [
-      'Most championships',
-      'Most Regular Season Wins',
-      'Most #1 regular-season finishes',
-      'Most last-place finishes',
-      'Highest single-week score ever',
-      'Best single-season points/game',
-      'Most single-season points against/game',
-      'Most career points',
-      'Most wins in a single season',
-      'Most losses in a single season',
-      'Highest career playoff win%',
-      'Most career playoff wins',
-      'Most championship game appearances',
-      'Most Maid Bowl appearances',
-      'Luckiest season ever',
-      'Unluckiest season ever',
-      'Best single-season Z-score',
-      'Worst single-season Z-score',
-      'Most Chat Ragequits',
-      'Most Chat Ragequits, Single Season',
-      // "Other Records" tab (hand-entered, appended after the computed
-      // cards) — fixture has 9 rows (7 real + 2 synthetic edge cases), all
-      // with a "Record Name", so all 9 render (only the name is required;
-      // a blank value or holder just renders as "—" on its own card).
-      'Most Times Slept Through Draft',
-      'Most Chat Rage-Quits, Single Season',
-      'Most Meals Ordered in Foreign Language at Draft',
-      'Farthest Draft from L.A.',
-      'Earliest Drafted Kicker',
-      'Most Defenses Drafted',
-      'Most Championships Secured due to Player Dying on Field',
-      'Missing Value Record',
-      'Longest losing streak trash talk',
-    ].join('|'),
-  `record cards are in the requested order, computed then other-records (got: ${recordCards.map((c) => c.label).join(', ')})`
-);
-assert(recordCards.length === 29, `record book has 20 computed + 9 other-records cards = 29 (got ${recordCards.length})`);
-const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
-assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
-const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
-assert(lastPlaceCard?.value === '3', 'most last-place finishes = 3');
-assert(
-  lastPlaceCard?.holders.includes('Ethan') && lastPlaceCard?.holders.includes('Kuba'),
-  'most last-place finishes is a tie: Ethan and Kuba'
+  toggleInitialState.ariaExpanded === 'false' && toggleInitialState.panelHidden === true,
+  'lineup panel starts collapsed (aria-expanded=false, panel hidden)'
 );
 
-// New record-book cards (this round), values cross-checked against the independent pandas run.
-const cardByLabel = (label) => recordCards.find((c) => c.label === label);
-assert(cardByLabel('Most single-season points against/game')?.value === '160.68', `most PA/game = 160.68 (got ${cardByLabel('Most single-season points against/game')?.value})`);
-assert(cardByLabel('Most single-season points against/game')?.holders.includes('Ray (2025)'), 'most PA/game holder = Ray (2025)');
-assert(cardByLabel('Most career points')?.value === '17500.01', `most career points = 17500.01 (got ${cardByLabel('Most career points')?.value})`);
-assert(cardByLabel('Most career points')?.holders === 'Tim', 'most career points holder = Tim');
-assert(cardByLabel('Most wins in a single season')?.value === '12', `most wins in a season = 12 (got ${cardByLabel('Most wins in a single season')?.value})`);
-assert(cardByLabel('Most wins in a single season')?.holders.includes('Marisa (2025)'), 'most wins in a season holder = Marisa (2025)');
-assert(cardByLabel('Most losses in a single season')?.value === '11', `most losses in a season = 11 (got ${cardByLabel('Most losses in a single season')?.value})`);
-assert(
-  cardByLabel('Most losses in a single season')?.holders.includes('Eri (2025)') &&
-    cardByLabel('Most losses in a single season')?.holders.includes('Ray (2023)'),
-  'most losses in a season is a tie: Eri (2025) and Ray (2023)'
-);
-assert(cardByLabel('Highest career playoff win%')?.value === '100.0%', `highest playoff win% = 100.0% (got ${cardByLabel('Highest career playoff win%')?.value})`);
-assert(cardByLabel('Highest career playoff win%')?.holders === 'Ray', 'highest playoff win% holder = Ray');
-assert(cardByLabel('Most career playoff wins')?.value === '7', `most playoff wins = 7 (got ${cardByLabel('Most career playoff wins')?.value})`);
-assert(cardByLabel('Most career playoff wins')?.holders === 'Tim', 'most playoff wins holder = Tim');
-
-// NEW (this round): playoff-record cards carry the "no play-in games" note.
-for (const label of ['Highest career playoff win%', 'Most career playoff wins']) {
-  const tooltip = cardByLabel(label)?.tooltip;
-  assert(tooltip === 'Playoff record does not include play-in games.', `"${label}" card has the play-in-games tooltip (got ${JSON.stringify(tooltip)})`);
+// Helper: find a photo card by its year pill text.
+async function photoCardForYear(year) {
+  for (const c of await page.$$('.photo-card')) {
+    const y = await c.$eval('.photo-year', (el) => el.textContent).catch(() => null);
+    if (y === year) return c;
+  }
+  return null;
 }
-assert(cardByLabel('Most championship game appearances')?.value === '4', `most champ game appearances = 4 (got ${cardByLabel('Most championship game appearances')?.value})`);
-assert(
-  ['Josh', 'Marisa', 'Tim'].every((m) => cardByLabel('Most championship game appearances')?.holders.includes(m)),
-  'most champ game appearances is a 3-way tie: Josh, Marisa, Tim'
-);
-assert(cardByLabel('Most Maid Bowl appearances')?.value === '4', `most Maid Bowl appearances = 4 (got ${cardByLabel('Most Maid Bowl appearances')?.value})`);
-assert(cardByLabel('Most Maid Bowl appearances')?.holders === 'Ethan', 'most Maid Bowl appearances holder = Ethan');
-assert(cardByLabel('Luckiest season ever')?.value === '+6', `luckiest season ever = +6 (got ${cardByLabel('Luckiest season ever')?.value})`);
-assert(
-  ['Ethan (2018)', 'Ethan (2023)', 'Josh (2016)'].every((h) => cardByLabel('Luckiest season ever')?.holders.includes(h)),
-  'luckiest season ever is a 3-way tie: Ethan (2018), Ethan (2023), Josh (2016)'
-);
-assert(cardByLabel('Unluckiest season ever')?.value === '-7', `unluckiest season ever = -7 (got ${cardByLabel('Unluckiest season ever')?.value})`);
-assert(cardByLabel('Unluckiest season ever')?.holders.includes('Carter (2016)'), 'unluckiest season ever holder = Carter (2016)');
-assert(cardByLabel('Best single-season Z-score')?.value === '+2.02', `best single-season z-score = +2.02 (got ${cardByLabel('Best single-season Z-score')?.value})`);
-assert(cardByLabel('Best single-season Z-score')?.holders.includes('Tim (2025)'), 'best single-season z-score holder = Tim (2025)');
-assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst single-season z-score = -2.00 (got ${cardByLabel('Worst single-season Z-score')?.value})`);
-assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
 
-// NEW (this round): Chat Ragequits record-book cards, cross-checked against the independent pandas run.
-assert(cardByLabel('Most Chat Ragequits')?.value === '17', `most career chat ragequits = 17 (got ${cardByLabel('Most Chat Ragequits')?.value})`);
-assert(cardByLabel('Most Chat Ragequits')?.holders === 'David', `most career chat ragequits holder = David (got ${cardByLabel('Most Chat Ragequits')?.holders})`);
-assert(cardByLabel('Most Chat Ragequits, Single Season')?.value === '8', `most chat ragequits in a season = 8 (got ${cardByLabel('Most Chat Ragequits, Single Season')?.value})`);
-assert(cardByLabel('Most Chat Ragequits, Single Season')?.holders.includes('David (2020)'), 'most chat ragequits in a season holder = David (2020)');
+const card2025 = await photoCardForYear('2025');
+assert(card2025 !== null, 'found the 2025 photo card to inspect its lineup');
+const toggle2025 = await card2025.$('.lineup-toggle');
+await toggle2025.click();
+await page.waitForTimeout(100);
+const expandedState = await toggle2025.evaluate((el) => ({
+  ariaExpanded: el.getAttribute('aria-expanded'),
+  panelHidden: el.nextElementSibling.hidden,
+}));
+assert(expandedState.ariaExpanded === 'true' && expandedState.panelHidden === false, 'clicking the toggle expands the lineup panel');
 
-// The 4 record-book cards whose stat also has a hover tooltip on Career/Season
-// Stats (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score)
-// carry the same kind of "ⓘ" tooltip here, with real explainer text.
-for (const label of ['Luckiest season ever', 'Unluckiest season ever', 'Best single-season Z-score', 'Worst single-season Z-score']) {
-  const tooltip = cardByLabel(label)?.tooltip;
-  assert(typeof tooltip === 'string' && tooltip.length > 20, `"${label}" card has a real tooltip (got ${JSON.stringify(tooltip)})`);
-}
-// Cards with no Career/Season Stats equivalent (e.g. a plain count) don't get one.
-assert(cardByLabel('Most championships')?.tooltip == null, '"Most championships" card has no tooltip icon (no Career Stats equivalent needs explaining)');
-// The tooltip icon uses the shared custom popup (data-tooltip via CSS ::after), not
-// a native `title` attribute -- which is what lets it be sized larger than default.
-const luckiestInfoIcon = await page.$('.record-card .th-info');
-assert(luckiestInfoIcon !== null, 'a tooltip icon element exists on the All-Time Records page');
-const iconHasNoNativeTitle = await page.$eval('.record-card .th-info', (el) => el.getAttribute('title') === null);
-assert(iconHasNoNativeTitle, 'tooltip icon has no native title attribute (uses the custom, resizable popup instead)');
-const tooltipMaxWidth = await page.$eval('.record-card .th-info', (el) => getComputedStyle(el, '::after').maxWidth);
-assert(tooltipMaxWidth && tooltipMaxWidth !== 'none', `tooltip popup has an explicit max-width so it renders as a real text box (got ${tooltipMaxWidth})`);
+const slots2025 = await card2025.$$eval('.lineup-slot', (els) =>
+  els.map((el) => ({
+    pos: el.querySelector('.lineup-pos')?.textContent,
+    player: el.querySelector('.lineup-player')?.textContent,
+    isEmpty: el.querySelector('.lineup-player')?.classList.contains('lineup-player-empty'),
+  }))
+);
+console.log('2025 lineup slots:', slots2025);
+assert(slots2025.length === 11, `2025 lineup has 11 slots (got ${slots2025.length})`);
+assert(
+  slots2025[0].pos === 'QB' && slots2025[0].player === 'Trevor Lawrence',
+  `2025 first slot is QB pill + "Trevor Lawrence", no colon in the pill (got ${JSON.stringify(slots2025[0])})`
+);
+assert(slots2025.every((s) => !s.pos.includes(':')), 'position pills never include a colon');
+const dstSlot2025 = slots2025.find((s) => s.pos === 'D/ST');
+assert(dstSlot2025?.player === 'Seahawks', `2025 D/ST slot player is "Seahawks" (got ${dstSlot2025?.player})`);
 
-// "Other Records" tab: freeform, hand-entered cards rendered in the exact same card format.
-assert(cardByLabel('Most Times Slept Through Draft')?.value === '1', `other-record value passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.value})`);
-assert(cardByLabel('Most Times Slept Through Draft')?.holders === 'Kuba (2017)', `other-record holder passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.holders})`);
-assert(
-  cardByLabel('Most Championships Secured due to Player Dying on Field')?.value === '1' &&
-    cardByLabel('Most Championships Secured due to Player Dying on Field')?.holders === 'Tim (2022, Damar Hamlin)',
-  `other-record value can include punctuation/parentheses (got value=${cardByLabel('Most Championships Secured due to Player Dying on Field')?.value} holders=${cardByLabel('Most Championships Secured due to Player Dying on Field')?.holders})`
+// Collapse it back and confirm the toggle works both ways.
+await toggle2025.click();
+await page.waitForTimeout(100);
+const collapsedAgain = await toggle2025.evaluate((el) => el.nextElementSibling.hidden);
+assert(collapsedAgain === true, 'clicking the toggle again collapses the lineup panel');
+
+// 2023's real sheet data has "D/ST Bills" with no colon — confirm the
+// tolerant parser still splits it into a "D/ST" pill + "Bills" player.
+const card2023 = await photoCardForYear('2023');
+await card2023.$eval('.lineup-toggle', (el) => el.click());
+await page.waitForTimeout(100);
+const slots2023 = await card2023.$$eval('.lineup-slot', (els) =>
+  els.map((el) => ({ pos: el.querySelector('.lineup-pos')?.textContent, player: el.querySelector('.lineup-player')?.textContent }))
 );
-assert(
-  cardByLabel('Longest losing streak trash talk')?.value === '17 days' && cardByLabel('Longest losing streak trash talk')?.holders === 'Ethan',
-  `other-record row with extra whitespace is trimmed on every column (got value=${cardByLabel('Longest losing streak trash talk')?.value} holders=${cardByLabel('Longest losing streak trash talk')?.holders})`
+const dstSlot2023 = slots2023.find((s) => s.player === 'Bills');
+assert(dstSlot2023?.pos === 'D/ST', `2023's colon-less "D/ST Bills" line still parses into a D/ST pill (got ${JSON.stringify(dstSlot2023)})`);
+
+// 2016's real sheet data has an unfilled TE slot ("TE: [empty]") — confirm
+// it renders as "Empty" with the muted/italic styling, not a blank pill.
+const card2016 = await photoCardForYear('2016');
+await card2016.$eval('.lineup-toggle', (el) => el.click());
+await page.waitForTimeout(100);
+const slots2016 = await card2016.$$eval('.lineup-slot', (els) =>
+  els.map((el) => ({
+    pos: el.querySelector('.lineup-pos')?.textContent,
+    player: el.querySelector('.lineup-player')?.textContent,
+    isEmpty: el.querySelector('.lineup-player')?.classList.contains('lineup-player-empty'),
+  }))
 );
-// Rows with a blank "Record Value" (real content lives in Holder instead)
-// still render -- only "Record Name" is required -- with "—" for the blank field.
+const teSlot2016 = slots2016.find((s) => s.pos === 'TE');
 assert(
-  cardByLabel('Farthest Draft from L.A.')?.value === '—' && cardByLabel('Farthest Draft from L.A.')?.holders === 'Cabo San Lucas, Mexico (2025)',
-  `other-record row with a blank value renders '—' and keeps its holder text (got value=${cardByLabel('Farthest Draft from L.A.')?.value} holders=${cardByLabel('Farthest Draft from L.A.')?.holders})`
+  teSlot2016?.player === 'Empty' && teSlot2016?.isEmpty === true,
+  `2016's unfilled TE slot renders as "Empty" with muted styling (got ${JSON.stringify(teSlot2016)})`
 );
-assert(
-  cardByLabel('Missing Value Record')?.value === '—' && cardByLabel('Missing Value Record')?.holders === 'Nobody',
-  `other-record row with a blank value still renders as a card, not dropped (got value=${cardByLabel('Missing Value Record')?.value} holders=${cardByLabel('Missing Value Record')?.holders})`
-);
-const otherRecordCardEls = await page.$$eval('.record-card', (cards) => cards.filter((c) => c.querySelector('.label').textContent === 'Most Times Slept Through Draft'));
-assert(otherRecordCardEls.length === 1, 'other-record card uses the same .record-card markup as computed cards');
 
 // Column header lookup helper (index-agnostic — survives future column reordering).
 async function headerIndex(tableSelector, matchText, excludeText) {
@@ -283,16 +246,6 @@ async function headerIndex(tableSelector, matchText, excludeText) {
     { matchText, excludeText }
   );
 }
-
-// Page titles / nav labels reflect the renamed pages.
-assert((await page.title()).includes('All-Time Records'), 'index.html title includes "All-Time Records"');
-const navText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
-assert(
-  navText.includes('All-Time Records') && navText.includes('Career Stats') && navText.includes('Season Stats'),
-  `nav shows renamed labels including Career Stats (got ${navText})`
-);
-assert(navText.includes('Draft History'), `nav includes "Draft History" (got ${navText})`);
-assert(navText.length === 7, `nav has 7 links (got ${navText.length})`);
 
 // ---- career-stats.html: the career totals table lives here now ----
 await page.goto(`${baseUrl}/career-stats.html`);
@@ -568,60 +521,226 @@ console.log('Ethan 2018 row:', ethan2018);
 const highestWeekIdx = await page.$$eval('#season-table thead th', (ths) => ths.findIndex((th) => th.textContent.includes('Highest Single Week')));
 assert(ethan2018 && ethan2018[highestWeekIdx] === '—', `2018 blank Highest Single Week renders as em-dash, not 0 (got ${ethan2018?.[highestWeekIdx]})`);
 
-// ---- hall-of-fame.html: manager names pulled live from the sheet, photo fallback ----
-await page.goto(`${baseUrl}/hall-of-fame.html`);
-const hofGateVisible = await page.$('.auth-box');
-assert(hofGateVisible === null, 'hall-of-fame.html does not re-prompt within the same session');
+// ---- all-time-records.html: the record book now lives at its own URL ----
+await page.goto(`${baseUrl}/all-time-records.html`);
+const atrGateVisible = await page.$('.auth-box');
+assert(atrGateVisible === null, 'all-time-records.html does not re-prompt within the same session');
+assert((await page.title()).includes('All-Time Records'), 'all-time-records.html title includes "All-Time Records"');
+const atrNavText = await page.$$eval('nav.site-nav a', (as) => as.map((a) => a.textContent));
+assert(
+  atrNavText.includes('All-Time Records') && atrNavText.includes('Career Stats') && atrNavText.includes('Season Stats'),
+  `nav shows renamed labels including Career Stats (got ${atrNavText})`
+);
+assert(atrNavText.includes('Draft History'), `nav includes "Draft History" (got ${atrNavText})`);
+assert(atrNavText.length === 7, `nav has 7 links (got ${atrNavText.length})`);
+const atrAriaCurrent = await page.$eval('nav.site-nav a[aria-current="page"]', (a) => a.textContent);
+assert(atrAriaCurrent === 'All-Time Records', `"All-Time Records" nav link is marked aria-current on all-time-records.html (got ${atrAriaCurrent})`);
 
-await page.waitForSelector('.photo-card');
-const hofCards = await page.$$eval('.photo-card', (cards) =>
-  cards.map((c) => ({
-    year: c.querySelector('.photo-year')?.textContent,
-    manager: c.querySelector('.photo-manager')?.textContent,
-    team: c.querySelector('.photo-team')?.textContent,
-    missing: c.classList.contains('photo-missing'),
-  }))
+await page.waitForSelector('.record-card');
+const recordCards = await page.$$eval('.record-card', (cards) =>
+  cards.map((c) => {
+    const labelEl = c.querySelector('.label');
+    const infoEl = labelEl.querySelector('.th-info');
+    // The label div's first child is always the plain label text node --
+    // a tooltip icon (if any) is a separate <span> appended after it, so
+    // this excludes the icon glyph ("ⓘ") from the label text itself.
+    const label = (labelEl.childNodes[0]?.nodeValue ?? labelEl.textContent).trim();
+    return {
+      label,
+      value: c.querySelector('.value').textContent,
+      holders: c.querySelector('.holders').textContent,
+      tooltip: infoEl ? infoEl.dataset.tooltip : null,
+    };
+  })
 );
-console.log('Hall of Fame cards:', hofCards);
-assert(hofCards.length === 11, `Hall of Fame shows all 11 years (got ${hofCards.length})`);
-assert(hofCards[0].year === '2025' && hofCards[0].manager === 'Tim', `2025 champion is Tim (got ${hofCards[0]?.manager})`);
+console.log(recordCards);
 assert(
-  hofCards.find((c) => c.year === '2015')?.manager === 'Marisa',
-  `2015 champion is Marisa (got ${hofCards.find((c) => c.year === '2015')?.manager})`
+  recordCards.find((c) => c.label.includes('Highest single-week'))?.value === '227.84',
+  'highest single-week score = 227.84'
 );
 assert(
-  hofCards.find((c) => c.year === '2016')?.manager === 'Ethan',
-  `2016 champion is Ethan (got ${hofCards.find((c) => c.year === '2016')?.manager})`
+  recordCards.find((c) => c.label.includes('Highest single-week'))?.holders.includes('Tim (2023)'),
+  'highest single-week score holder = Tim (2023)'
 );
-// Team names come from photo-pages-data.js (parsed from each photo's filename), shown alongside the manager.
-assert(hofCards[0].team === 'maidbait', `2025 team name is "maidbait" (got ${hofCards[0].team})`);
 assert(
-  hofCards.find((c) => c.year === '2015')?.team === 'Waiver Wired',
-  `2015 team name is "Waiver Wired" (got ${hofCards.find((c) => c.year === '2015')?.team})`
+  recordCards.find((c) => c.label.includes('Most championships'))?.value === '3',
+  'most championships = 3'
 );
-// No real photos exist in this test fixture set — every card should fall back gracefully.
-await page.waitForTimeout(200);
-const allMissing = await page.$$eval('.photo-card', (cards) => cards.every((c) => c.classList.contains('photo-missing')));
-assert(allMissing, 'cards fall back to "photo coming soon" when the image 404s, instead of a broken-image icon');
+assert(
+  recordCards.find((c) => c.label === 'Most Regular Season Wins')?.value === '80',
+  'most regular season wins = 80'
+);
+assert(
+  recordCards.find((c) => c.label === 'Most Regular Season Wins')?.holders.includes('Marisa'),
+  'most regular season wins holder = Marisa'
+);
+assert(
+  recordCards.find((c) => c.label.includes('#1 regular-season'))?.value === '4',
+  'most #1 regular-season finishes = 4'
+);
+assert(
+  recordCards.map((c) => c.label).join('|') ===
+    [
+      'Most championships',
+      'Most Regular Season Wins',
+      'Most #1 regular-season finishes',
+      'Most last-place finishes',
+      'Highest single-week score ever',
+      'Best single-season points/game',
+      'Most single-season points against/game',
+      'Most career points',
+      'Most wins in a single season',
+      'Most losses in a single season',
+      'Highest career playoff win%',
+      'Most career playoff wins',
+      'Most championship game appearances',
+      'Most Maid Bowl appearances',
+      'Luckiest season ever',
+      'Unluckiest season ever',
+      'Best single-season Z-score',
+      'Worst single-season Z-score',
+      'Most Chat Ragequits',
+      'Most Chat Ragequits, Single Season',
+      // NEW (this round): computed from the "Hall of Fame" tab's lineup data,
+      // appended right after the season-tab-computed cards and before "Other
+      // Records" (see leaderboard.js's lineupRecordCards).
+      'Most Appearances by a Single Player in Championship Lineups',
+      // "Other Records" tab (hand-entered, appended after the computed
+      // cards) — fixture has 9 rows (7 real + 2 synthetic edge cases), all
+      // with a "Record Name", so all 9 render (only the name is required;
+      // a blank value or holder just renders as "—" on its own card).
+      'Most Times Slept Through Draft',
+      'Most Chat Rage-Quits, Single Season',
+      'Most Meals Ordered in Foreign Language at Draft',
+      'Farthest Draft from L.A.',
+      'Earliest Drafted Kicker',
+      'Most Defenses Drafted',
+      'Most Championships Secured due to Player Dying on Field',
+      'Missing Value Record',
+      'Longest losing streak trash talk',
+    ].join('|'),
+  `record cards are in the requested order, computed then lineup then other-records (got: ${recordCards.map((c) => c.label).join(', ')})`
+);
+assert(recordCards.length === 30, `record book has 20 computed + 1 lineup + 9 other-records cards = 30 (got ${recordCards.length})`);
+const recordBookHeading = await page.$$eval('h2', (hs) => hs.some((h) => h.textContent.trim() === 'Record Book'));
+assert(recordBookHeading === false, '"Record Book" heading has been removed from the page');
+const lastPlaceCard = recordCards.find((c) => c.label.includes('last-place'));
+assert(lastPlaceCard?.value === '3', 'most last-place finishes = 3');
+assert(
+  lastPlaceCard?.holders.includes('Ethan') && lastPlaceCard?.holders.includes('Kuba'),
+  'most last-place finishes is a tie: Ethan and Kuba'
+);
 
-// NEW (this round): pill-caption layout — manager name and year share one
-// row (".photo-primary"), with the year pill as the row's second child; the
-// team name (Hall of Fame only) is a separate line below it.
-const captionStructure = await page.$eval('.photo-card', (card) => {
-  const primary = card.querySelector('.photo-primary');
-  return {
-    hasPrimary: !!primary,
-    primaryChildCount: primary?.children.length,
-    firstChildClass: primary?.children[0]?.className,
-    secondChildClass: primary?.children[1]?.className,
-    teamIsSiblingOfPrimary: card.querySelector('.photo-team')?.parentElement === card.querySelector('.photo-caption'),
-  };
-});
-assert(captionStructure.hasPrimary, 'photo card has a .photo-primary row');
-assert(captionStructure.primaryChildCount === 2, `.photo-primary contains exactly manager + year (got ${captionStructure.primaryChildCount} children)`);
-assert(captionStructure.firstChildClass === 'photo-manager', `.photo-primary's first child is the manager name (got ${captionStructure.firstChildClass})`);
-assert(captionStructure.secondChildClass === 'photo-year', `.photo-primary's second child is the year pill (got ${captionStructure.secondChildClass})`);
-assert(captionStructure.teamIsSiblingOfPrimary, '.photo-team sits alongside .photo-primary as its own line, not inside it');
+// New record-book cards (this round), values cross-checked against the independent pandas run.
+const cardByLabel = (label) => recordCards.find((c) => c.label === label);
+assert(cardByLabel('Most single-season points against/game')?.value === '160.68', `most PA/game = 160.68 (got ${cardByLabel('Most single-season points against/game')?.value})`);
+assert(cardByLabel('Most single-season points against/game')?.holders.includes('Ray (2025)'), 'most PA/game holder = Ray (2025)');
+assert(cardByLabel('Most career points')?.value === '17500.01', `most career points = 17500.01 (got ${cardByLabel('Most career points')?.value})`);
+assert(cardByLabel('Most career points')?.holders === 'Tim', 'most career points holder = Tim');
+assert(cardByLabel('Most wins in a single season')?.value === '12', `most wins in a season = 12 (got ${cardByLabel('Most wins in a single season')?.value})`);
+assert(cardByLabel('Most wins in a single season')?.holders.includes('Marisa (2025)'), 'most wins in a season holder = Marisa (2025)');
+assert(cardByLabel('Most losses in a single season')?.value === '11', `most losses in a season = 11 (got ${cardByLabel('Most losses in a single season')?.value})`);
+assert(
+  cardByLabel('Most losses in a single season')?.holders.includes('Eri (2025)') &&
+    cardByLabel('Most losses in a single season')?.holders.includes('Ray (2023)'),
+  'most losses in a season is a tie: Eri (2025) and Ray (2023)'
+);
+assert(cardByLabel('Highest career playoff win%')?.value === '100.0%', `highest playoff win% = 100.0% (got ${cardByLabel('Highest career playoff win%')?.value})`);
+assert(cardByLabel('Highest career playoff win%')?.holders === 'Ray', 'highest playoff win% holder = Ray');
+assert(cardByLabel('Most career playoff wins')?.value === '7', `most playoff wins = 7 (got ${cardByLabel('Most career playoff wins')?.value})`);
+assert(cardByLabel('Most career playoff wins')?.holders === 'Tim', 'most playoff wins holder = Tim');
+
+// NEW (this round): playoff-record cards carry the "no play-in games" note.
+for (const label of ['Highest career playoff win%', 'Most career playoff wins']) {
+  const tooltip = cardByLabel(label)?.tooltip;
+  assert(tooltip === 'Playoff record does not include play-in games.', `"${label}" card has the play-in-games tooltip (got ${JSON.stringify(tooltip)})`);
+}
+assert(cardByLabel('Most championship game appearances')?.value === '4', `most champ game appearances = 4 (got ${cardByLabel('Most championship game appearances')?.value})`);
+assert(
+  ['Josh', 'Marisa', 'Tim'].every((m) => cardByLabel('Most championship game appearances')?.holders.includes(m)),
+  'most champ game appearances is a 3-way tie: Josh, Marisa, Tim'
+);
+assert(cardByLabel('Most Maid Bowl appearances')?.value === '4', `most Maid Bowl appearances = 4 (got ${cardByLabel('Most Maid Bowl appearances')?.value})`);
+assert(cardByLabel('Most Maid Bowl appearances')?.holders === 'Ethan', 'most Maid Bowl appearances holder = Ethan');
+assert(cardByLabel('Luckiest season ever')?.value === '+6', `luckiest season ever = +6 (got ${cardByLabel('Luckiest season ever')?.value})`);
+assert(
+  ['Ethan (2018)', 'Ethan (2023)', 'Josh (2016)'].every((h) => cardByLabel('Luckiest season ever')?.holders.includes(h)),
+  'luckiest season ever is a 3-way tie: Ethan (2018), Ethan (2023), Josh (2016)'
+);
+assert(cardByLabel('Unluckiest season ever')?.value === '-7', `unluckiest season ever = -7 (got ${cardByLabel('Unluckiest season ever')?.value})`);
+assert(cardByLabel('Unluckiest season ever')?.holders.includes('Carter (2016)'), 'unluckiest season ever holder = Carter (2016)');
+assert(cardByLabel('Best single-season Z-score')?.value === '+2.02', `best single-season z-score = +2.02 (got ${cardByLabel('Best single-season Z-score')?.value})`);
+assert(cardByLabel('Best single-season Z-score')?.holders.includes('Tim (2025)'), 'best single-season z-score holder = Tim (2025)');
+assert(cardByLabel('Worst single-season Z-score')?.value === '-2.00', `worst single-season z-score = -2.00 (got ${cardByLabel('Worst single-season Z-score')?.value})`);
+assert(cardByLabel('Worst single-season Z-score')?.holders.includes('Michael (2017)'), 'worst single-season z-score holder = Michael (2017)');
+
+// NEW (this round): Chat Ragequits record-book cards, cross-checked against the independent pandas run.
+assert(cardByLabel('Most Chat Ragequits')?.value === '17', `most career chat ragequits = 17 (got ${cardByLabel('Most Chat Ragequits')?.value})`);
+assert(cardByLabel('Most Chat Ragequits')?.holders === 'David', `most career chat ragequits holder = David (got ${cardByLabel('Most Chat Ragequits')?.holders})`);
+assert(cardByLabel('Most Chat Ragequits, Single Season')?.value === '8', `most chat ragequits in a season = 8 (got ${cardByLabel('Most Chat Ragequits, Single Season')?.value})`);
+assert(cardByLabel('Most Chat Ragequits, Single Season')?.holders.includes('David (2020)'), 'most chat ragequits in a season holder = David (2020)');
+
+// NEW (this round): "Most Appearances by a Single Player in Championship
+// Lineups" — computed from the "Hall of Fame" tab's lineup data (D/ST and
+// unfilled slots excluded). Verified against the real fetched sheet data
+// with a standalone script before this shipped: A.J. Brown appears in the
+// 2019, 2022, and 2023 championship lineups — 3 times, more than anyone else.
+assert(
+  cardByLabel('Most Appearances by a Single Player in Championship Lineups')?.value === '3',
+  `most lineup appearances = 3 (got ${cardByLabel('Most Appearances by a Single Player in Championship Lineups')?.value})`
+);
+assert(
+  cardByLabel('Most Appearances by a Single Player in Championship Lineups')?.holders === 'A.J. Brown',
+  `most lineup appearances holder = A.J. Brown (got ${cardByLabel('Most Appearances by a Single Player in Championship Lineups')?.holders})`
+);
+const lineupCardTooltip = cardByLabel('Most Appearances by a Single Player in Championship Lineups')?.tooltip;
+assert(
+  typeof lineupCardTooltip === 'string' && lineupCardTooltip.includes('D/ST'),
+  `lineup-appearances card has a real tooltip explaining the D/ST exclusion (got ${JSON.stringify(lineupCardTooltip)})`
+);
+
+// The 4 record-book cards whose stat also has a hover tooltip on Career/Season
+// Stats (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score)
+// carry the same kind of "ⓘ" tooltip here, with real explainer text.
+for (const label of ['Luckiest season ever', 'Unluckiest season ever', 'Best single-season Z-score', 'Worst single-season Z-score']) {
+  const tooltip = cardByLabel(label)?.tooltip;
+  assert(typeof tooltip === 'string' && tooltip.length > 20, `"${label}" card has a real tooltip (got ${JSON.stringify(tooltip)})`);
+}
+// Cards with no Career/Season Stats equivalent (e.g. a plain count) don't get one.
+assert(cardByLabel('Most championships')?.tooltip == null, '"Most championships" card has no tooltip icon (no Career Stats equivalent needs explaining)');
+// The tooltip icon uses the shared custom popup (data-tooltip via CSS ::after), not
+// a native `title` attribute -- which is what lets it be sized larger than default.
+const luckiestInfoIcon = await page.$('.record-card .th-info');
+assert(luckiestInfoIcon !== null, 'a tooltip icon element exists on the All-Time Records page');
+const iconHasNoNativeTitle = await page.$eval('.record-card .th-info', (el) => el.getAttribute('title') === null);
+assert(iconHasNoNativeTitle, 'tooltip icon has no native title attribute (uses the custom, resizable popup instead)');
+const tooltipMaxWidth = await page.$eval('.record-card .th-info', (el) => getComputedStyle(el, '::after').maxWidth);
+assert(tooltipMaxWidth && tooltipMaxWidth !== 'none', `tooltip popup has an explicit max-width so it renders as a real text box (got ${tooltipMaxWidth})`);
+
+// "Other Records" tab: freeform, hand-entered cards rendered in the exact same card format.
+assert(cardByLabel('Most Times Slept Through Draft')?.value === '1', `other-record value passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.value})`);
+assert(cardByLabel('Most Times Slept Through Draft')?.holders === 'Kuba (2017)', `other-record holder passes through verbatim (got ${cardByLabel('Most Times Slept Through Draft')?.holders})`);
+assert(
+  cardByLabel('Most Championships Secured due to Player Dying on Field')?.value === '1' &&
+    cardByLabel('Most Championships Secured due to Player Dying on Field')?.holders === 'Tim (2022, Damar Hamlin)',
+  `other-record value can include punctuation/parentheses (got value=${cardByLabel('Most Championships Secured due to Player Dying on Field')?.value} holders=${cardByLabel('Most Championships Secured due to Player Dying on Field')?.holders})`
+);
+assert(
+  cardByLabel('Longest losing streak trash talk')?.value === '17 days' && cardByLabel('Longest losing streak trash talk')?.holders === 'Ethan',
+  `other-record row with extra whitespace is trimmed on every column (got value=${cardByLabel('Longest losing streak trash talk')?.value} holders=${cardByLabel('Longest losing streak trash talk')?.holders})`
+);
+// Rows with a blank "Record Value" (real content lives in Holder instead)
+// still render -- only "Record Name" is required -- with "—" for the blank field.
+assert(
+  cardByLabel('Farthest Draft from L.A.')?.value === '—' && cardByLabel('Farthest Draft from L.A.')?.holders === 'Cabo San Lucas, Mexico (2025)',
+  `other-record row with a blank value renders '—' and keeps its holder text (got value=${cardByLabel('Farthest Draft from L.A.')?.value} holders=${cardByLabel('Farthest Draft from L.A.')?.holders})`
+);
+assert(
+  cardByLabel('Missing Value Record')?.value === '—' && cardByLabel('Missing Value Record')?.holders === 'Nobody',
+  `other-record row with a blank value still renders as a card, not dropped (got value=${cardByLabel('Missing Value Record')?.value} holders=${cardByLabel('Missing Value Record')?.holders})`
+);
+const otherRecordCardEls = await page.$$eval('.record-card', (cards) => cards.filter((c) => c.querySelector('.label').textContent === 'Most Times Slept Through Draft'));
+assert(otherRecordCardEls.length === 1, 'other-record card uses the same .record-card markup as computed cards');
 
 // ---- maid-quarters.html: entries render with year + manager, no team name ----
 await page.goto(`${baseUrl}/maid-quarters.html`);

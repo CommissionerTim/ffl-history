@@ -4,9 +4,11 @@ pandas (not sharing any code with calc.js) against the same fixture CSVs.
 If this and calc_output.json (produced by run_calc.mjs) don't agree, that's
 a real bug to chase down before trusting either one.
 """
+import csv
 import glob
 import json
 import os
+import re
 
 import pandas as pd
 
@@ -520,3 +522,77 @@ else:
     print("(no Draft History.csv fixture found -- skipped)")
 
 print(f"\n{draft_history_mismatches} Draft History mismatches found.\n")
+
+print("=== Hall of Fame lineups tab: pandas vs calc.js ===")
+print("(computed stat, but not season-tab data -- reparsed from scratch here with Python's csv/re modules")
+print(" against the raw transposed CSV, independent of PapaParse and of calc.js's own regex)")
+hof_mismatches = 0
+hof_path = os.path.join(FIXTURES, "Hall of Fame.csv")
+if os.path.exists(hof_path):
+    with open(hof_path, newline="", encoding="utf-8") as f:
+        raw_rows = list(csv.reader(f))
+
+    year_row = next((r for r in raw_rows if r and r[0].strip() == "Year"), None)
+    lineup_row = next((r for r in raw_rows if r and r[0].strip() == "Championship Starting Lineup"), None)
+
+    expected_lineups = {}
+    if year_row and lineup_row:
+        for i in range(1, len(year_row)):
+            year_cell = year_row[i].strip() if i < len(year_row) else ""
+            if not year_cell.isdigit():
+                continue
+            year = int(year_cell)
+            cell = lineup_row[i] if i < len(lineup_row) else ""
+            slots = []
+            for line in cell.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                m = re.match(r"^([A-Za-z/]+):?\s*(.*)$", line)
+                if m:
+                    slots.append({"position": m.group(1).strip(), "player": m.group(2).strip()})
+                else:
+                    slots.append({"position": "", "player": line})
+            if slots:
+                expected_lineups[year] = slots
+
+    js_lineups = {int(k): v for k, v in js_out.get("hallOfFameLineups", {}).items()}
+    if expected_lineups != js_lineups:
+        print(f"MISMATCH hallOfFameLineups: pandas years={sorted(expected_lineups.keys())} js years={sorted(js_lineups.keys())}")
+        for year in sorted(set(expected_lineups) | set(js_lineups)):
+            if expected_lineups.get(year) != js_lineups.get(year):
+                print(f"  MISMATCH year {year}: pandas={expected_lineups.get(year)} js={js_lineups.get(year)}")
+        hof_mismatches += 1
+
+    # Independently recompute "most appearances in a championship lineup",
+    # excluding D/ST slots and unfilled ("[empty]") slots -- same rule as
+    # championshipLineupAppearances in calc.js, reimplemented from scratch
+    # rather than imported, so this is a real cross-check.
+    counts = {}
+    for slots in expected_lineups.values():
+        for slot in slots:
+            if re.match(r"^d/st$", slot["position"], re.IGNORECASE):
+                continue
+            player = slot["player"]
+            if not player or re.match(r"^\[?empty\]?$", player, re.IGNORECASE):
+                continue
+            counts[player] = counts.get(player, 0) + 1
+    if counts:
+        best = max(counts.values())
+        holders = sorted(p for p, c in counts.items() if c == best)
+    else:
+        best, holders = None, []
+
+    js_appearances = js_out.get("lineupAppearances", {})
+    if best != js_appearances.get("value") or holders != js_appearances.get("holders"):
+        print(
+            f"MISMATCH lineupAppearances: pandas value={best} holders={holders} "
+            f"js value={js_appearances.get('value')} holders={js_appearances.get('holders')}"
+        )
+        hof_mismatches += 1
+    else:
+        print(f"lineupAppearances matches: value={best} holders={holders}")
+else:
+    print("(no Hall of Fame.csv fixture found -- skipped)")
+
+print(f"\n{hof_mismatches} Hall of Fame lineup mismatches found.\n")
