@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
-  <title>League Rules</title>
+  <title>All-Time Records</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
   <link rel="alternate icon" href="favicon.ico" />
@@ -21,8 +21,8 @@
       <a href="index.html">Hall of Fame</a>
       <a href="career-stats.html">Career Stats</a>
       <a href="season.html">Season Stats</a>
-      <a href="all-time-records.html">All-Time Records</a>
-      <a href="rules.html" aria-current="page">League Rules</a>
+      <a href="all-time-records.html" aria-current="page">All-Time Records</a>
+      <a href="rules.html">League Rules</a>
       <a href="draft-history.html">Draft History</a>
       <a href="maid-quarters.html">Maid Quarters</a>
     </nav>
@@ -32,12 +32,13 @@
     <div id="status" class="status-banner" hidden></div>
 
     <section class="panel">
-      <div id="doc-content" class="doc-content rules-content"></div>
+      <div id="record-grid" class="record-grid"></div>
     </section>
   </main>
 
-  <footer class="site-footer">Rules pulled live from the league's Google Doc.</footer>
+  <footer class="site-footer">Data pulled live from the league's Google Sheet.</footer>
 
-  <script type="module" src="assets/rules.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script type="module" src="assets/leaderboard.js"></script>
 </body>
 </html>

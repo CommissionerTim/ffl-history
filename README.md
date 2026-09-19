@@ -8,18 +8,29 @@ verbatim — everything else is computed, never estimated or hand-typed.
 
 ## Pages
 
-- `index.html` — All-Time Records: the record book (20 computed cards, one
-  extreme/leader stat per card, ties shown as multiple holders — see
-  "Advanced stats" below for how the Z-score/luck/playoff-driven ones are
-  computed), plus any freeform cards from the sheet's "Other Records" tab
-  appended after them in the same format (see "Day-to-day maintenance"). The
-  4 cards whose stat also appears as a column on Career/Season Stats
-  (Luckiest/Unluckiest season ever, Best/Worst single-season Z-score) carry
-  the same hover "ⓘ" explainer as that column. "Most Chat Ragequits" and
-  "Most Chat Ragequits, Single Season" are computed from the sheet's "Chat
-  Ragequits" column (see below) the same way every other computed card is —
-  not to be confused with the unrelated, hand-typed "Other Records" entry
-  that predates this column, if one still exists on your sheet.
+- `index.html` — the site's homepage: Hall of Fame, one photo card per
+  year's champion, manager's name looked up live from the sheet. Each card
+  has an expandable "Starting Lineup" section (collapsed by default) showing
+  that year's championship starting lineup — position pills (QB, RB, WR,
+  TE, FLEX, D/ST, K — no colon) next to each player's name — pulled from the
+  sheet's "Hall of Fame" tab (see "Day-to-day maintenance"). A year with no
+  lineup entered on that tab just gets no expandable section.
+- `all-time-records.html` — All-Time Records: the record book (21 computed
+  cards, one extreme/leader stat per card, ties shown as multiple holders —
+  see "Advanced stats" below for how the Z-score/luck/playoff-driven ones
+  are computed), plus any freeform cards from the sheet's "Other Records"
+  tab appended after them in the same format (see "Day-to-day
+  maintenance"). The 4 cards whose stat also appears as a column on
+  Career/Season Stats (Luckiest/Unluckiest season ever, Best/Worst
+  single-season Z-score) carry the same hover "ⓘ" explainer as that column.
+  "Most Chat Ragequits" and "Most Chat Ragequits, Single Season" are
+  computed from the sheet's "Chat Ragequits" column (see below) the same
+  way every other computed card is — not to be confused with the unrelated,
+  hand-typed "Other Records" entry that predates this column, if one still
+  exists on your sheet. "Most Appearances by a Single Player in
+  Championship Lineups" is the one card computed from the "Hall of Fame"
+  tab's lineup data rather than the season tabs (D/ST and unfilled slots
+  never count) — it just doesn't appear if that tab doesn't exist yet.
 - `career-stats.html` — Career Stats: the full sortable career-totals table.
   A toggle above the table switches between "All Managers" (every manager
   who's ever played, the default) and "Active Managers" (only whoever has a
@@ -44,7 +55,6 @@ verbatim — everything else is computed, never estimated or hand-typed.
   (sortable), including Z-score, Pythagorean win expectation, and win%
   over/under Pythagorean expectation for that season (see "Advanced stats"),
   plus that year's raw Chat Ragequits count per manager.
-- `hall-of-fame.html` — one photo card per year's champion.
 - `maid-quarters.html` — one photo card per year's last-place finisher (only for years you've added).
 - `draft-history.html` — Draft History: one write-up per draft, newest
   first, pulled straight from the sheet's "Draft History" tab (see
@@ -71,6 +81,24 @@ Sheet (Final Standing 1 for Hall of Fame, that year's last place for Maid
 Quarters), so it can't drift out of sync with the rest of the site. A card
 whose photo hasn't been dropped in yet just shows "Photo coming soon"
 instead of a broken image.
+
+**Adding/editing a Hall of Fame starting lineup:** on the sheet's "Hall of
+Fame" tab (one column per year, rows labeled "Year" / "Champion" / "Team
+Name" / "Championship Starting Lineup"), fill in that year's "Championship
+Starting Lineup" cell as one line per roster spot: `POSITION: Player Name`
+(e.g. `QB: Patrick Mahomes`), one line per Enter/newline within the cell. A
+spot that genuinely wasn't filled that year can read `TE: [empty]` — it
+still shows on the card, just styled as empty. Multiple lines with the same
+position (e.g. two `QB:` lines, two `FLEX:` lines) are fine and expected in
+years with 2 flex/2-QB rosters. The "Champion" and "Team Name" rows on this
+tab are just Tim's own cross-check copy — the site never actually reads
+them, since it already gets that data live from the season tabs and
+`photo-pages-data.js`; only the "Championship Starting Lineup" row feeds
+the site (the expandable section on Hall of Fame, and the "Most
+Appearances" card on All-Time Records). If this tab doesn't exist yet (or
+gets renamed), both of those quietly don't appear rather than breaking
+their pages; to rename the tab, update `HALL_OF_FAME_LINEUPS_TAB` in
+`config.js` to match.
 
 **Editing the league rules:** just edit the Google Doc — the page re-fetches
 it live on every load, no site change needed. To point it at a different
@@ -232,14 +260,19 @@ math:
 All of the above are cross-checked at the individual manager-season level
 (not just in aggregate) against an independent pandas recomputation in
 `test/independent_check.py` — 0 mismatches across every manager-year before
-this shipped. The 20 computed record-book cards on `index.html` (6
-original + 12 added in an earlier round: Most Single-Season Points
+this shipped. Of the 21 computed record-book cards on `all-time-records.html`,
+20 (6 original + 12 added in an earlier round: Most Single-Season Points
 Against/Game, Most Career Points, Most Wins/Losses in a Single Season,
 Highest Career Playoff Win%, Most Career Playoff Wins, Most Championship
 Game Appearances, Most Maid Bowl Appearances, Luckiest/Unluckiest Season
-Ever, and Best/Worst Single-Season Z-Score, + 2 added most recently: Most
+Ever, and Best/Worst Single-Season Z-Score, + 2 added in a later round: Most
 Chat Ragequits and Most Chat Ragequits, Single Season) are likewise
 cross-checked, value and holder(s), against the same pandas recomputation.
+The 21st, "Most Appearances by a Single Player in Championship Lineups", is
+computed from the separate, hand-maintained "Hall of Fame" tab rather than
+the season tabs, so it isn't part of that pandas cross-check — it was
+instead verified directly against the real sheet data (see "Day-to-day
+maintenance").
 
 ## Extending the site later
 
