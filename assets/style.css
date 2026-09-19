@@ -277,6 +277,13 @@ section.panel h2 {
   padding-top: 0.6rem;
   border-top: 1px solid var(--border);
 }
+/* [hidden] and .lineup-panel are equal specificity, and this stylesheet
+   loads after the browser's own default one, so without this override
+   `display: flex` above wins and the panel shows even while `hidden` is
+   set -- every lineup would render pre-expanded on page load. */
+.lineup-panel[hidden] {
+  display: none;
+}
 
 .lineup-slot {
   display: flex;
