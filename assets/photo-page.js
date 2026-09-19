@@ -18,6 +18,7 @@ import { loadAllSeasons } from './data.js';
  * @param {string} opts.statusId
  * @param {string} opts.emptyMessage - shown when `entries` is empty
  * @param {boolean} [opts.showTeamName] - defaults to true; set false to omit the team-name line (e.g. Maid Quarters)
+ * @param {Map<number, Array<{position:string, player:string}>>} [opts.lineups] - year -> championship starting lineup (Hall of Fame only; see calc.js's parseHallOfFameLineups). A year missing from this map (or omitted entirely) just gets no expandable section — never an empty/broken one.
  */
 export async function initPhotoPage(opts) {
   await requireAuth(opts.passwordHash);
@@ -57,11 +58,12 @@ export async function initPhotoPage(opts) {
   for (const entry of sortedEntries) {
     const rows = seasonsByYear.get(entry.year);
     const row = rows ? opts.selectRow(rows) : null;
-    grid.appendChild(buildCard(entry, row, opts.photoDir, showTeamName));
+    const lineup = opts.lineups?.get(entry.year);
+    grid.appendChild(buildCard(entry, row, opts.photoDir, showTeamName, lineup));
   }
 }
 
-function buildCard(entry, row, photoDir, showTeamName) {
+function buildCard(entry, row, photoDir, showTeamName, lineup) {
   const managerName = row ? row.manager : null;
 
   const card = document.createElement('div');
@@ -118,7 +120,66 @@ function buildCard(entry, row, photoDir, showTeamName) {
     caption.appendChild(teamEl);
   }
 
+  if (lineup && lineup.length) {
+    caption.appendChild(buildLineupSection(lineup));
+  }
+
   card.appendChild(caption);
 
   return card;
+}
+
+/**
+ * The expandable "Starting Lineup" section on a Hall of Fame card: a
+ * toggle button, and a panel (hidden until expanded) listing each roster
+ * slot as a small position pill (no colon — see calc.js's
+ * parseHallOfFameLineups, which already strips it) next to the player name.
+ * @param {Array<{position:string, player:string}>} lineup
+ */
+function buildLineupSection(lineup) {
+  const wrap = document.createElement('div');
+  wrap.className = 'lineup-section';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'lineup-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+
+  const toggleLabel = document.createElement('span');
+  toggleLabel.textContent = 'Starting Lineup';
+  const chevron = document.createElement('span');
+  chevron.className = 'lineup-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.textContent = '▾';
+  toggle.append(toggleLabel, chevron);
+
+  const panel = document.createElement('div');
+  panel.className = 'lineup-panel';
+  panel.hidden = true;
+
+  for (const { position, player } of lineup) {
+    const slot = document.createElement('div');
+    slot.className = 'lineup-slot';
+
+    const posEl = document.createElement('span');
+    posEl.className = 'lineup-pos';
+    posEl.textContent = position || '—';
+
+    const playerEl = document.createElement('span');
+    const isEmpty = !player || /^\[?empty\]?$/i.test(player);
+    playerEl.className = isEmpty ? 'lineup-player lineup-player-empty' : 'lineup-player';
+    playerEl.textContent = isEmpty ? 'Empty' : player;
+
+    slot.append(posEl, playerEl);
+    panel.appendChild(slot);
+  }
+
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!expanded));
+    panel.hidden = expanded;
+  });
+
+  wrap.append(toggle, panel);
+  return wrap;
 }

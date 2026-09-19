@@ -127,6 +127,82 @@ export function normalizeDraftHistoryRows(parsedRows) {
     .filter((r) => r !== null);
 }
 
+/**
+ * Parse the freeform "Hall of Fame" tab into a Map<year, slots[]>. Unlike
+ * every other tab this site reads, it's TRANSPOSED — one column per year,
+ * with row labels in column A ("Year", "Champion", "Team Name",
+ * "Championship Starting Lineup") — so this looks rows up by label (safe
+ * against the sheet's rows being reordered) rather than by position, and
+ * takes the raw headerless parse (array of arrays) rather than the
+ * header-keyed rows every other normalize* function takes.
+ *
+ * Only the "Championship Starting Lineup" row is actually used elsewhere on
+ * the site (see file header in data.js) — "Champion" and "Team Name" are
+ * Tim's own cross-check copy of data the site already sources live from the
+ * season tabs and photo-pages-data.js, so they're intentionally not parsed
+ * out here at all.
+ *
+ * Each year's lineup cell is a newline-separated list of "POSITION: Player
+ * Name" lines (a handful of real rows are missing the colon, e.g.
+ * "D/ST Bills" — tolerated by the regex below, which treats the colon as
+ * optional). A slot can read "[empty]" for a season where that spot
+ * genuinely wasn't filled; those slots are kept (so the lineup display can
+ * still show the empty spot) — callers that count real players (e.g.
+ * championshipLineupAppearances) are the ones responsible for skipping them.
+ * @param {Array<Array<string>>} rawRows - headerless Papa.parse output (header: false)
+ * @returns {Map<number, Array<{position: string, player: string}>>}
+ */
+export function parseHallOfFameLineups(rawRows) {
+  const yearRow = rawRows.find((r) => (r[0] ?? '').toString().trim() === 'Year');
+  const lineupRow = rawRows.find((r) => (r[0] ?? '').toString().trim() === 'Championship Starting Lineup');
+  const lineups = new Map();
+  if (!yearRow || !lineupRow) return lineups;
+
+  for (let i = 1; i < yearRow.length; i++) {
+    const yearCell = (yearRow[i] ?? '').toString().trim();
+    if (!/^\d+$/.test(yearCell)) continue; // trailing blank padding columns, etc.
+    const year = Number(yearCell);
+    const cell = (lineupRow[i] ?? '').toString();
+    const slots = cell
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const match = line.match(/^([A-Za-z/]+):?\s*(.*)$/);
+        return match ? { position: match[1].trim(), player: match[2].trim() } : { position: '', player: line };
+      });
+    if (slots.length) lineups.set(year, slots);
+  }
+  return lineups;
+}
+
+/**
+ * Which player has started in the most championship-winning lineups, per
+ * parseHallOfFameLineups' output. D/ST slots never count (a defense isn't a
+ * player), and an unfilled "[empty]" slot is skipped rather than counted as
+ * a real appearance. Ties return every player at the top count, sorted
+ * alphabetically, same convention as the rest of the record book.
+ * @param {Map<number, Array<{position: string, player: string}>>} lineupsByYear
+ * @returns {{value: number|null, holders: string[]}}
+ */
+export function championshipLineupAppearances(lineupsByYear) {
+  const counts = new Map();
+  for (const slots of lineupsByYear.values()) {
+    for (const { position, player } of slots) {
+      if (/^d\/st$/i.test(position)) continue;
+      if (!player || /^\[?empty\]?$/i.test(player)) continue;
+      counts.set(player, (counts.get(player) ?? 0) + 1);
+    }
+  }
+  if (counts.size === 0) return { value: null, holders: [] };
+  const best = Math.max(...counts.values());
+  const holders = [...counts.entries()]
+    .filter(([, c]) => c === best)
+    .map(([player]) => player)
+    .sort();
+  return { value: best, holders };
+}
+
 // ---------------------------------------------------------------------
 // Per-row / per-season derived values
 // ---------------------------------------------------------------------

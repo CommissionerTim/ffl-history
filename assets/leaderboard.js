@@ -1,7 +1,7 @@
-import { SHEET_ID, YEARS, OTHER_RECORDS_TAB, PASSWORD_HASH, SITE_TITLE } from '../config.js';
+import { SHEET_ID, YEARS, OTHER_RECORDS_TAB, HALL_OF_FAME_LINEUPS_TAB, PASSWORD_HASH, SITE_TITLE } from '../config.js';
 import { requireAuth } from './auth.js';
-import { loadAllSeasons, loadOtherRecords } from './data.js';
-import { buildLeaderboard } from './calc.js';
+import { loadAllSeasons, loadOtherRecords, loadHallOfFameLineups } from './data.js';
+import { buildLeaderboard, championshipLineupAppearances } from './calc.js';
 import { makeInfoIcon } from './table.js';
 
 document.title = SITE_TITLE + ' — All-Time Records';
@@ -30,9 +30,10 @@ async function main() {
   status.className = 'status-banner loading';
   status.hidden = false;
 
-  const [{ seasons, errors }, otherRecords] = await Promise.all([
+  const [{ seasons, errors }, otherRecords, hallOfFameLineups] = await Promise.all([
     loadAllSeasons(SHEET_ID, YEARS),
     loadOtherRecords(SHEET_ID, OTHER_RECORDS_TAB),
+    loadHallOfFameLineups(SHEET_ID, HALL_OF_FAME_LINEUPS_TAB),
   ]);
 
   if (errors.length) {
@@ -51,11 +52,15 @@ async function main() {
   if (otherRecords.error) {
     console.error('Other Records tab:', otherRecords.error);
   }
+  if (hallOfFameLineups.error) {
+    console.error('Hall of Fame lineups tab:', hallOfFameLineups.error);
+  }
 
   const grid = document.getElementById('record-grid');
   grid.innerHTML = '';
   const { recordBook } = buildLeaderboard(seasons);
   appendRecordCards(grid, computedRecordCards(recordBook));
+  appendRecordCards(grid, lineupRecordCards(hallOfFameLineups.lineups));
   appendRecordCards(grid, otherRecordCards(otherRecords.records));
 }
 
@@ -171,6 +176,23 @@ function computedRecordCards(rb) {
       label: 'Most Chat Ragequits, Single Season',
       value: rb.mostRagequitsSeason.value ?? '—',
       holders: holdersText(rb.mostRagequitsSeason.holders, true),
+    },
+  ];
+}
+
+// The one record computed from the "Hall of Fame" tab's lineup data (see
+// calc.js's championshipLineupAppearances) rather than from the season
+// tabs like every other computedRecordCards entry — kept separate since it
+// depends on an optional, hand-maintained tab that might not exist yet.
+function lineupRecordCards(lineupsByYear) {
+  const { value, holders } = championshipLineupAppearances(lineupsByYear);
+  if (value === null) return [];
+  return [
+    {
+      label: 'Most Appearances by a Single Player in Championship Lineups',
+      value,
+      holders: holders.join(', '),
+      tooltip: 'Counts how many different championship-winning starting lineups (Hall of Fame page) each player has appeared in. Defenses (D/ST) and unfilled roster spots don’t count.',
     },
   ];
 }

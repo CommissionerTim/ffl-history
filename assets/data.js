@@ -2,7 +2,7 @@
 // Google Sheet at page load time, and parses it into normalized rows using
 // calc.js. This is the only network-facing module; calc.js stays pure.
 
-import { normalizeYearRows, normalizeOtherRecordsRows, normalizeDraftHistoryRows } from './calc.js';
+import { normalizeYearRows, normalizeOtherRecordsRows, normalizeDraftHistoryRows, parseHallOfFameLineups } from './calc.js';
 
 function csvUrlForSheetTab(sheetId, tabName) {
   // The gviz/tq endpoint accepts a sheet NAME (not gid), works cross-origin
@@ -104,6 +104,31 @@ export async function loadOtherRecords(sheetId, tabName) {
     return { records: normalizeOtherRecordsRows(rowsFromRawCsv(parsed.data)), error: null };
   } catch (err) {
     return { records: [], error: err?.message ?? String(err) };
+  }
+}
+
+/**
+ * Fetch + parse the freeform "Hall of Fame" tab (see config.js). Unlike
+ * every other tab this site reads, it's transposed — one column per year,
+ * rows labeled "Year" / "Champion" / "Team Name" / "Championship Starting
+ * Lineup" in column A — so it's parsed headerless and handed whole to
+ * parseHallOfFameLineups (calc.js), which finds the rows it needs by their
+ * label rather than by position. Optional and hand-maintained like
+ * loadOtherRecords, so a fetch/parse failure is swallowed into
+ * `{ lineups: empty Map, error }` rather than thrown — the two features it
+ * powers (expandable lineups, the "Most Appearances" record) just don't
+ * appear rather than breaking their pages.
+ */
+export async function loadHallOfFameLineups(sheetId, tabName) {
+  try {
+    const csvText = await fetchSheetTabCsv(sheetId, tabName);
+    const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+    if (parsed.errors && parsed.errors.length) {
+      throw new Error(`CSV parse error in "${tabName}" tab: ${parsed.errors[0].message}`);
+    }
+    return { lineups: parseHallOfFameLineups(parsed.data), error: null };
+  } catch (err) {
+    return { lineups: new Map(), error: err?.message ?? String(err) };
   }
 }
 
